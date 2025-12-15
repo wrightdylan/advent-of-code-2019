@@ -1,0 +1,32 @@
+[package]
+name = "aoc_2019"
+version = "0.1.0"
+author = ["Dylan Wright"]
+edition = "2024"
+rust-version = "1.92.0"
+
+[registeries.crates-io]
+protocol = "sparse"
+
+[dependencies]
+aoc-runner = "0.3.0"
+aoc-runner-derive = "0.3.0"
+binarray = { git = "https://github.com/wrightdylan/binarray.git", tag = "0.1.2"}
+bitvecs = { git = "https://github.com/wrightdylan/bitvecs.git", tag = "0.1.1" }
+rayon = "1.11.0"
+
+[build]
+target = ["x86_64-unknown-linux-gnu"]
+
+[profile.dev]
+opt-levvel = 1
+
+[profile.test]
+opt-level = 1
+
+[profile.release]
+strip = "all"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
