@@ -1,7 +1,7 @@
 use crate::utils::Machine;
 
 #[aoc_generator(day2)]
-pub fn input_generator(input: &str) -> Vec<usize> {
+pub fn input_generator(input: &str) -> Vec<isize> {
     input
         .split(',')
         .map(|line| line.parse().unwrap())
@@ -9,7 +9,7 @@ pub fn input_generator(input: &str) -> Vec<usize> {
 }
 
 #[aoc(day2, part1)]
-pub fn solve_part1(input: &Vec<usize>) -> usize {
+pub fn solve_part1(input: &Vec<isize>) -> usize {
     let mut vm = Machine::new(input);
 
     // 1202 program alarm
@@ -18,11 +18,11 @@ pub fn solve_part1(input: &Vec<usize>) -> usize {
 
     vm.run();
 
-    vm.read(0)
+    vm.read(0) as usize
 }
 
 #[aoc(day2, part2)]
-pub fn solve_part2(input: &Vec<usize>) -> usize {
+pub fn solve_part2(input: &Vec<isize>) -> usize {
     let target = 19690720;
     let mut vm = Machine::new(input);
 
@@ -33,7 +33,7 @@ pub fn solve_part2(input: &Vec<usize>) -> usize {
             vm.run();
 
             if vm.read(0) == target {
-                return 100 * noun + verb;
+                return (100 * noun + verb) as usize;
             } else {
                 vm.reboot(input);
             }

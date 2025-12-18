@@ -27,3 +27,14 @@ macro_rules! hashset {
         }
     };
 }
+
+#[macro_export]
+macro_rules! vecdeque {
+    ($($elem:expr),*) => {{
+        let mut dq = ::std::collections::VecDeque::new();
+        $(
+            dq.push_back($elem);
+        )*
+        dq
+    }};
+}
