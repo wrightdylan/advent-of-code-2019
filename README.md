@@ -14,6 +14,7 @@ All solutions linked below:
 | [03](https://adventofcode.com/2019/day/3)  | Crossed Wires                      | 89.0µs | 89.0µs | [day03.rs](./src/day03.rs) | :relaxed: |
 | [04](https://adventofcode.com/2019/day/4)  | Secure Container                   | 3.92µs | 10.9µs | [day04.rs](./src/day04.rs) | :pensive: |
 | [05](https://adventofcode.com/2019/day/5)  | Sunny with a Chance of Asteroids   | 4.07µs | 4.07µs | [day05.rs](./src/day05.rs) | :yum: |
+| [06](https://adventofcode.com/2019/day/6)  | Universal Orbit Map                | 49.6µs | 30.5µs | [day06.rs](./src/day06.rs) | :frowning: |
 
 ## Notes
 1. I thought having an array as a parameter cache in the VM would speed things up, but apparently simply returning an array is consistently marginally faster.
