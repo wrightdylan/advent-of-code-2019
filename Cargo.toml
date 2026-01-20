@@ -13,6 +13,7 @@ aoc-runner = "0.3.0"
 aoc-runner-derive = "0.3.0"
 binarray = { git = "https://github.com/wrightdylan/binarray.git", tag = "0.1.2"}
 bitvecs = { git = "https://github.com/wrightdylan/bitvecs.git", tag = "0.1.1" }
+itertools = "0.14.0"
 rayon = "1.11.0"
 
 [build]

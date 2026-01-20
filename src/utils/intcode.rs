@@ -9,6 +9,7 @@ pub struct Machine {
     oq: Vec<isize>,      // Output queue
     pm: [isize; 2],      // Parameter mode
     os: bool,            // Operating System running?
+    ps: bool,            // Pause operations (e.g. wait for input)
 }
 
 impl Machine {
@@ -22,12 +23,13 @@ impl Machine {
             oq: Vec::new(),
             pm: [0; 2],
             os: true,
+            ps: false,
         }
     }
 
     // Run the machine
     pub fn run(&mut self) {
-        while self.os {
+        while self.os && !self.ps {
             let opcode = self.fetch_inst();
             match opcode {
                 1  => self.add(),
@@ -88,6 +90,16 @@ impl Machine {
         self.iq.extend(inputs.iter());
     }
 
+    // Drains the output queue from one machine and uses it as the input for another
+    pub fn input_from(&mut self, other: &mut Machine) {
+        self.iq.extend(other.oq.drain(..));
+    }
+
+    // Checks if the machine is still running
+    pub fn is_running(&self) -> bool {
+        self.os
+    }
+
     // Load inputs into queue
     pub fn load(&mut self, inputs: VecDeque<isize>) {
         self.iq = inputs;
@@ -103,14 +115,19 @@ impl Machine {
         }
     }
 
+    // Pauses the operation and releases the machine
+    pub fn pause(&mut self) {
+        self.ps = true;
+    }
+
     // Read the value at a given location
     pub fn read(&self, index: usize) -> isize {
         self.cs[index]
     }
 
     // Outputs only the last entry of the output
-    pub fn read_last(&self) -> usize {
-        *self.oq.last().unwrap() as usize
+    pub fn read_last(&self) -> isize {
+        *self.oq.last().unwrap()
     }
 
     // Displays the output queue
@@ -122,7 +139,16 @@ impl Machine {
     pub fn reboot(&mut self, prog: &Vec<isize>) {
         self.ip = 0;
         self.cs = prog.clone();
+        self.iq.clear();
+        self.oq.clear();
+        self.pm = [0; 2];
         self.os = true;
+    }
+
+    // Resumes operation
+    pub fn resume(&mut self) {
+        self.ps = false;
+        self.run();
     }
 
     // SHOW content of memory location
@@ -148,8 +174,12 @@ impl Machine {
     // Opcode 3 - Takes an INPUT value, and stores it at address X
     fn inp(&mut self) {
         let params = self.get_params(1);
-        self.cs[params[0]] = self.iq.pop_front().unwrap();
-        self.inc_ptr(2);
+        if let Some(inst) = self.iq.pop_front() {
+            self.cs[params[0]] = inst;
+            self.inc_ptr(2);
+        } else {
+            self.pause();
+        }
     }
 
     // Opcode 4 - OUTPUTS a value from address X

@@ -9,7 +9,7 @@ pub fn input_generator(input: &str) -> Vec<isize> {
 }
 
 #[aoc(day5, part1)]
-pub fn solve_part1(input: &Vec<isize>) -> usize {
+pub fn solve_part1(input: &Vec<isize>) -> isize {
     let mut vm = Machine::new(input);
     vm.input_ext(&[1]);
 
@@ -19,7 +19,7 @@ pub fn solve_part1(input: &Vec<isize>) -> usize {
 }
 
 #[aoc(day5, part2)]
-pub fn solve_part2(input: &Vec<isize>) -> usize {
+pub fn solve_part2(input: &Vec<isize>) -> isize {
     let mut vm = Machine::new(input);
     vm.input_ext(&[5]);
 
