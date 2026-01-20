@@ -16,6 +16,7 @@ All solutions linked below:
 | [05](https://adventofcode.com/2019/day/5)  | Sunny with a Chance of Asteroids   | 4.07µs | 4.07µs | [day05.rs](./src/day05.rs) | :yum: |
 | [06](https://adventofcode.com/2019/day/6)  | Universal Orbit Map                | 49.6µs | 30.5µs | [day06.rs](./src/day06.rs) | :frowning: |
 | [07](https://adventofcode.com/2019/day/7)  | Amplification Circuit              | 133µs  | 1.02ms | [day07.rs](./src/day07.rs) | :grimacing: |
+| [08](https://adventofcode.com/2019/day/8)  | Space Image Format                 | 280ns  | 27.9µs | [day08.rs](./src/day08.rs) | :relaxed: |
 
 ## Notes
 1. I thought having an array as a parameter cache in the VM would speed things up, but apparently simply returning an array is consistently marginally faster.

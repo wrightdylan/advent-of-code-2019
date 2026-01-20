@@ -143,6 +143,7 @@ impl Machine {
         self.oq.clear();
         self.pm = [0; 2];
         self.os = true;
+        self.ps = false;
     }
 
     // Resumes operation
@@ -235,5 +236,6 @@ impl Machine {
     // Opcode 99 - Halt and Catch Fire
     fn hcf(&mut self) {
         self.os = false;
+        self.ps = true;
     }
 }
