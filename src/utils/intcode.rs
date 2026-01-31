@@ -1,29 +1,34 @@
 use std::{collections::VecDeque, ops::RangeInclusive};
 
+pub type Program = Vec<isize>;
+pub type Memory = Vec<isize>;
+
 // Intcode Virtual Machine
 #[derive(Debug, Clone)]
 pub struct Machine {
     ip: usize,           // Instruction Pointer
-    cs: Vec<isize>,      // Code Sequence
+    cs: Memory,          // Code Sequence
     iq: VecDeque<isize>, // Input queue
     oq: Vec<isize>,      // Output queue
-    pm: [isize; 2],      // Parameter mode
+    pm: [isize; 3],      // Parameter mode
     os: bool,            // Operating System running?
     ps: bool,            // Pause operations (e.g. wait for input)
+    rb: isize,           // Relative base
 }
 
 impl Machine {
     // *** All the basic shit ***
     // Create a new virtual machine
-    pub fn new(prog: &Vec<isize>) -> Self {
+    pub fn new(prog: &Program) -> Self {
         Self { 
             ip: 0,
             cs: prog.clone(),
             iq: VecDeque::new(),
             oq: Vec::new(),
-            pm: [0; 2],
+            pm: [0; 3],
             os: true,
             ps: false,
+            rb: 0,
         }
     }
 
@@ -40,10 +45,17 @@ impl Machine {
                 6  => self.jz(),
                 7  => self.lt(),
                 8  => self.eq(),
+                9  => self.rbx(),
                 99 => self.hcf(),
                 _  => panic!("Invalid opcode"),
             }
         }
+    }
+
+    // ////////////////////////////////////////////////////////////////////////
+    // Dump the output queue
+    pub fn dump_output(&self) -> &Vec<isize> {
+        &self.oq
     }
 
     // Fetch the next instruction
@@ -52,7 +64,7 @@ impl Machine {
         let opcode = code % 100;
         code /= 100;
 
-        for idx in 0..2 {
+        for idx in 0..3 {
             self.pm[idx] = code % 10;
             code /= 10;
         }
@@ -60,15 +72,26 @@ impl Machine {
         opcode
     }
 
-    // Read parameters for an operation
-    fn get_params(&mut self, size: usize) -> Vec<usize> {
-        let mut params = Vec::with_capacity(size);
+    // Gets the address from memory
+    fn get_addr(&mut self, offset: usize) -> usize {
+        let addr = match self.pm[offset - 1] {
+            0 => self.cs[self.ip + offset] as usize,
+            1 => self.ip + offset,
+            2 => (self.rb + self.cs[self.ip + offset]) as usize,
+            _ => unreachable!(),
+        };
 
-        for offset in 1..=size {
-            params.push(self.cs[self.ip + offset] as usize);
-        }
+        if addr >= self.cs.len() {
+            self.cs.resize(addr + 1, 0);
+        };
 
-        params
+        addr
+    }
+    
+    // Fetches a parameter for an operation according to parameter mode
+    fn get_param(&mut self, offset: usize) -> isize {
+        let addr = self.get_addr(offset);
+        self.cs[addr]
     }
 
     // Increment the instruction pointer
@@ -105,14 +128,12 @@ impl Machine {
         self.iq = inputs;
     }
 
-    // Returns a value based on parameter mode
-    pub fn param(&mut self, params: &Vec<usize>, pos: usize) -> isize {
-        let param = params[pos];
-        if self.pm[pos] == 1 {
-            return param as isize;
-        } else {
-            return self.cs[param];
-        }
+    // Parses the program
+    pub fn parse(input: &str) -> Program {
+        input
+            .split(',')
+            .map(|line| line.parse().unwrap())
+            .collect()
     }
 
     // Pauses the operation and releases the machine
@@ -136,14 +157,15 @@ impl Machine {
     }
 
     // Resets the machine and loads a program 
-    pub fn reboot(&mut self, prog: &Vec<isize>) {
+    pub fn reboot(&mut self, prog: &Program) {
         self.ip = 0;
         self.cs = prog.clone();
         self.iq.clear();
         self.oq.clear();
-        self.pm = [0; 2];
+        self.pm = [0; 3];
         self.os = true;
         self.ps = false;
+        self.rb = 0;
     }
 
     // Resumes operation
@@ -158,25 +180,33 @@ impl Machine {
     }
 
     // *** All the opcode shit ***
+    // Format of instruction: ABCDE
+    // A - mode of 3rd parameter
+    // B - mode of 2nd parameter
+    // C - mode of 1st parameter
+    // DE - two-digit opcode
+    // Modes: 0 - position, 1 - immediate, 2 - relative
+    // Parameters that an instruction writes to will never be in immediate mode.
+
     // Opcode 1 - ADD values from indices A and B, place into index C
     fn add(&mut self,) {
-        let params = self.get_params(3);
-        self.cs[params[2]] = self.param(&params, 0) + self.param(&params, 1);
+        let addr = self.get_addr(3);
+        self.cs[addr] = self.get_param(1) + self.get_param(2);
         self.inc_ptr(4);
     }
 
     // Opcode 2 - MULTIPLY values from indices A and B, place into index C
     fn mul(&mut self) {
-        let params = self.get_params(3);
-        self.cs[params[2]] = self.param(&params, 0) * self.param(&params, 1);
+        let addr = self.get_addr(3);
+        self.cs[addr] = self.get_param(1) * self.get_param(2);
         self.inc_ptr(4);
     }
 
     // Opcode 3 - Takes an INPUT value, and stores it at address X
     fn inp(&mut self) {
-        let params = self.get_params(1);
         if let Some(inst) = self.iq.pop_front() {
-            self.cs[params[0]] = inst;
+            let addr = self.get_addr(1);
+            self.cs[addr] = inst;
             self.inc_ptr(2);
         } else {
             self.pause();
@@ -185,27 +215,24 @@ impl Machine {
 
     // Opcode 4 - OUTPUTS a value from address X
     fn out(&mut self) {
-        let params = self.get_params(1);
-        let output = self.param(&params, 0);
+        let output = self.get_param(1);
         self.oq.push(output);
         self.inc_ptr(2);
     }
 
-    // Opcode 5 - JUMP-IF-TRUE, if the value in A is non-zero, sets to instruction pointer to value B
+    // Opcode 5 - JUMP-IF-TRUE, if the value in A is non-zero, sets the instruction pointer to value B
     fn jnz(&mut self) {
-        let params = self.get_params(2);
-        if self.param(&params, 0) != 0 {
-            self.ip = self.param(&params, 1) as usize;
+        if self.get_param(1) != 0 {
+            self.ip = self.get_param(2) as usize;
         } else {
             self.inc_ptr(3);
         }
     }
 
-    // Opcode 6 - JUMP-IF-FALSE, if a value in A is zero, sets to instruction pointer to value B
+    // Opcode 6 - JUMP-IF-FALSE, if a value in A is zero, sets the instruction pointer to value B
     fn jz(&mut self) {
-        let params = self.get_params(2);
-        if self.param(&params, 0) == 0 {
-            self.ip = self.param(&params, 1) as usize;
+        if self.get_param(1) == 0 {
+            self.ip = self.get_param(2) as usize;
         } else {
             self.inc_ptr(3);
         }
@@ -213,8 +240,8 @@ impl Machine {
 
     // Opcode 7 - Tests if value A is LESS THAN value B, and puts the truth in value C
     fn lt(&mut self) {
-        let params = self.get_params(3);
-        self.cs[params[2]] = if self.param(&params, 0) < self.param(&params, 1) {
+        let addr = self.get_addr(3);
+        self.cs[addr] = if self.get_param(1) < self.get_param(2) {
             1
         } else {
             0
@@ -224,13 +251,19 @@ impl Machine {
 
     // Opcode 8 - Tests if value A is EQUAL to value B, and puts the truth in value C
     fn eq(&mut self) {
-        let params = self.get_params(3);
-        self.cs[params[2]] = if self.param(&params, 0) == self.param(&params, 1) {
+        let addr = self.get_addr(3);
+        self.cs[addr] = if self.get_param(1) == self.get_param(2) {
             1
         } else {
             0
         };
         self.inc_ptr(4);
+    }
+
+    // Opcode 9 - Adjusts the relative base by an offset
+    fn rbx(&mut self) {
+        self.rb += self.get_param(1);
+        self.inc_ptr(2);
     }
 
     // Opcode 99 - Halt and Catch Fire
