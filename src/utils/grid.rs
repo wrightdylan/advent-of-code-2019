@@ -26,6 +26,15 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         Self { width, height, entity }
     }
 
+    // New grid from an ASCII block of chars
+    pub fn new_from_block(input: &str) -> Grid<char> {
+        let width = input.lines().next().unwrap().len();
+        let height = input.lines().count();
+        let entity = input.lines().flat_map(|line| line.chars()).collect();
+
+        Grid::new(width, height, entity)
+    }
+
     /// Places an entity at position (x, y)
     pub fn place_at<'a, I>(&mut self, points: I, value: T)
     where
