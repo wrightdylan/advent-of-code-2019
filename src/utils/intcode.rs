@@ -141,6 +141,11 @@ impl Machine {
         self.ps = true;
     }
 
+    // Pops the last entry in the output queue
+    pub fn pop_out(&mut self) -> Option<isize> {
+        self.oq.pop()
+    }
+
     // Read the value at a given location
     pub fn read(&self, index: usize) -> isize {
         self.cs[index]
@@ -177,6 +182,17 @@ impl Machine {
     // SHOW content of memory location
     pub fn show(&self, pos: usize) {
         println!("{}", self.cs[pos]);
+    }
+
+    // Display the status of the machine (for debugging)
+    pub fn status(&self) {
+        println!("Pointer location: {}", self.ip);
+        println!("Input queue: {:?}", self.iq);
+        println!("Output queue: {:?}", self.oq);
+        println!("Parameter modes: {:?}", self.pm);
+        println!("Operating system: {}", match self.os { true => "running", false => "stopped" } );
+        println!("System paused: {}", self.ps);
+        println!("Relative base: {}", self.rb);
     }
 
     // *** All the opcode shit ***

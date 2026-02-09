@@ -392,15 +392,15 @@ where T: std::fmt::Debug {
 
 impl<Char> Grid<Char>
 where 
-    Char: std::fmt::Debug,
+    Char: std::fmt::Debug + std::fmt::Display,
 {
-    /// Draws a map.
+    /// Draws a map if the grid contains chars.
     pub fn draw_map(&self) {
         println!("Width: {}, height: {}", self.width, self.height);
         for row in 0..self.height {
             for col in 0..self.width {
                 let idx = row * self.width + col;
-                print!("{:?}", self.entity[idx]);
+                print!("{}", self.entity[idx]);
             }
             println!();
         }
