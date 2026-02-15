@@ -25,5 +25,5 @@ pub mod prelude {
     pub use std::cmp::{Ordering, Reverse, min, max};
     pub use std::fmt;
     pub use std::hash::Hash;
-    pub use std::ops::{Index, IndexMut};
+    pub use std::ops::{Index, IndexMut, Range};
 }

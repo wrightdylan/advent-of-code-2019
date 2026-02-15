@@ -54,6 +54,7 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         self.entity.iter().filter(|&x| x == target).count()
     }
 
+    /// Finds all coordinates of a matching target 
     pub fn find_pos(&self, target: &T) -> Vec<(usize, usize)>
     where
         T: PartialEq
@@ -67,6 +68,11 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
                 None
             })
             .collect()
+    }
+
+    /// Returns the entity at a specific index
+    pub fn get(&self, idx: usize) -> T {
+        self.entity[idx]
     }
 
     /// Returns the height of the grid
@@ -346,6 +352,11 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         }
     }
 
+    /// Sets the entity at a specific index
+    pub fn set(&mut self, idx: usize, value: T) {
+        self.entity[idx] = value;
+    }
+
     /// Returns the size of the grid as a tuple (width, height)
     pub fn size(&self) -> (usize, usize) {
         (self.width, self.height)
@@ -484,6 +495,33 @@ impl<T> Index<usize> for Grid<T> {
     }
 }
 
+impl<T> Index<Range<i32>> for Grid<T> {
+    type Output = [T];
+
+    /// Returns a slice of elements for the given range on grid[idx].
+    fn index(&self, range: Range<i32>) -> &[T] {
+        &self.entity[range.start as usize..range.end as usize]
+    }
+}
+
+impl<T> Index<Range<isize>> for Grid<T> {
+    type Output = [T];
+
+    /// Returns a slice of elements for the given range on grid[idx].
+    fn index(&self, range: Range<isize>) -> &[T] {
+        &self.entity[range.start as usize..range.end as usize]
+    }
+}
+
+impl<T> Index<Range<usize>> for Grid<T> {
+    type Output = [T];
+
+    /// Returns a slice of elements for the given range on grid[idx].
+    fn index(&self, range: Range<usize>) -> &[T] {
+        &self.entity[range]
+    }
+}
+
 impl<T> Index<(i32, i32)> for Grid<T> {
     type Output = T;
 
@@ -511,6 +549,48 @@ impl<T> Index<(usize, usize)> for Grid<T> {
     fn index(&self, (col, row): (usize, usize)) -> &Self::Output {
         let idx = (self.width * row) + col;
         &self.entity[idx]
+    }
+}
+
+impl<T> IndexMut<i32> for Grid<T> {
+    /// Returns a mutable element at location on grid[idx].
+    fn index_mut(&mut self, idx: i32) -> &mut T {
+        &mut self.entity[idx as usize]
+    }
+}
+
+impl<T> IndexMut<isize> for Grid<T> {
+    /// Returns a mutable element at location on grid[idx].
+    fn index_mut(&mut self, idx: isize) -> &mut T {
+        &mut self.entity[idx as usize]
+    }
+}
+
+impl<T> IndexMut<usize> for Grid<T> {
+    /// Returns a mutable element at location on grid[idx].
+    fn index_mut(&mut self, idx: usize) -> &mut T {
+        &mut self.entity[idx]
+    }
+}
+
+impl<T> IndexMut<Range<i32>> for Grid<T> {
+    /// Returns a mutable slice of elements for the given range on grid[idx].
+    fn index_mut(&mut self, range: Range<i32>) -> &mut [T] {
+        &mut self.entity[range.start as usize..range.end as usize]
+    }
+}
+
+impl<T> IndexMut<Range<isize>> for Grid<T> {
+    /// Returns a mutable slice of elements for the given range on grid[idx].
+    fn index_mut(&mut self, range: Range<isize>) -> &mut [T] {
+        &mut self.entity[range.start as usize..range.end as usize]
+    }
+}
+
+impl<T> IndexMut<Range<usize>> for Grid<T> {
+    /// Returns a mutable slice of elements for the given range on grid[idx].
+    fn index_mut(&mut self, range: Range<usize>) -> &mut [T] {
+        &mut self.entity[range]
     }
 }
 

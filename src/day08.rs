@@ -59,20 +59,20 @@ pub fn solve_part2(input: &Vec<Layer>) -> usize {
 
     for layer in input {
         for (idx, pixel) in layer.pixels.iter().enumerate() {
-            if image.entity[idx] == None {
+            if image[idx] == None {
                 match pixel {
-                    0 => image.entity[idx] = Some(' '),
-                    1 => image.entity[idx] = Some('#'),
+                    0 => image[idx] = Some(' '),
+                    1 => image[idx] = Some('#'),
                     _ => continue,
                 }
             }
         }
     }
 
-    for row in 0..image.height {
-        let start_idx = row * image.width;
-        let end_idx = start_idx + image.width;
-        let row_slice = &image.entity[start_idx..end_idx];
+    for row in 0..image.height() {
+        let start_idx = row * image.width();
+        let end_idx = start_idx + image.width();
+        let row_slice = &image[start_idx..end_idx];
         for pos in row_slice {
             print!("{}", pos.unwrap())
         }

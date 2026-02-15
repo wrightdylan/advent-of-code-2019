@@ -47,8 +47,8 @@ pub fn solve_part1(input: &Program) -> usize {
         vm.resume();
 
         // Using a Vec for output requires popping the data in reverse order.
-        let next_dir = vm.pop_out().unwrap();
-        colour = vm.pop_out().unwrap();
+        let next_dir = vm.pop_back().unwrap();
+        colour = vm.pop_back().unwrap();
 
         vgrid.entry(pos).and_modify(|panel| *panel = colour).or_insert(colour);
 
@@ -80,13 +80,10 @@ pub fn solve_part2(input: &Program) -> usize {
         vm.input_ext(&vec![current_colour]);
         vm.resume();
 
-        // Using a Vec for output requires popping the data in reverse order.
-        let next_dir = vm.pop_out().unwrap();
-        colour = vm.pop_out().unwrap();
-
+        colour = vm.pop_front().unwrap();
         vgrid.entry(pos).and_modify(|panel| *panel = colour).or_insert(colour);
 
-        dir = match next_dir {
+        dir = match vm.pop_front().unwrap() {
             0 => dir.turn_left(),
             1 => dir.turn_right(),
             _ => unreachable!(),
