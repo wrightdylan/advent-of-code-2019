@@ -499,7 +499,7 @@ impl<T> Index<Range<i32>> for Grid<T> {
     type Output = [T];
 
     /// Returns a slice of elements for the given range on grid[idx].
-    fn index(&self, range: Range<i32>) -> &[T] {
+    fn index(&self, range: Range<i32>) -> &Self::Output {
         &self.entity[range.start as usize..range.end as usize]
     }
 }
@@ -508,7 +508,7 @@ impl<T> Index<Range<isize>> for Grid<T> {
     type Output = [T];
 
     /// Returns a slice of elements for the given range on grid[idx].
-    fn index(&self, range: Range<isize>) -> &[T] {
+    fn index(&self, range: Range<isize>) -> &Self::Output {
         &self.entity[range.start as usize..range.end as usize]
     }
 }
@@ -517,7 +517,7 @@ impl<T> Index<Range<usize>> for Grid<T> {
     type Output = [T];
 
     /// Returns a slice of elements for the given range on grid[idx].
-    fn index(&self, range: Range<usize>) -> &[T] {
+    fn index(&self, range: Range<usize>) -> &Self::Output {
         &self.entity[range]
     }
 }
@@ -553,50 +553,50 @@ impl<T> Index<(usize, usize)> for Grid<T> {
 }
 
 impl<T> IndexMut<i32> for Grid<T> {
-    /// Returns a mutable element at location on grid[idx].
-    fn index_mut(&mut self, idx: i32) -> &mut T {
+    /// Changes the element at location on grid[idx].
+    fn index_mut(&mut self, idx: i32) -> &mut Self::Output {
         &mut self.entity[idx as usize]
     }
 }
 
 impl<T> IndexMut<isize> for Grid<T> {
-    /// Returns a mutable element at location on grid[idx].
-    fn index_mut(&mut self, idx: isize) -> &mut T {
+    /// Changes the element at location on grid[idx].
+    fn index_mut(&mut self, idx: isize) -> &mut Self::Output {
         &mut self.entity[idx as usize]
     }
 }
 
 impl<T> IndexMut<usize> for Grid<T> {
-    /// Returns a mutable element at location on grid[idx].
-    fn index_mut(&mut self, idx: usize) -> &mut T {
+    /// Changes the element at location on grid[idx].
+    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         &mut self.entity[idx]
     }
 }
 
 impl<T> IndexMut<Range<i32>> for Grid<T> {
-    /// Returns a mutable slice of elements for the given range on grid[idx].
-    fn index_mut(&mut self, range: Range<i32>) -> &mut [T] {
+    /// Changes the elements for the given range on grid[idx].
+    fn index_mut(&mut self, range: Range<i32>) -> &mut Self::Output {
         &mut self.entity[range.start as usize..range.end as usize]
     }
 }
 
 impl<T> IndexMut<Range<isize>> for Grid<T> {
-    /// Returns a mutable slice of elements for the given range on grid[idx].
-    fn index_mut(&mut self, range: Range<isize>) -> &mut [T] {
+    /// Changes the elements for the given range on grid[idx].
+    fn index_mut(&mut self, range: Range<isize>) -> &mut Self::Output {
         &mut self.entity[range.start as usize..range.end as usize]
     }
 }
 
 impl<T> IndexMut<Range<usize>> for Grid<T> {
-    /// Returns a mutable slice of elements for the given range on grid[idx].
-    fn index_mut(&mut self, range: Range<usize>) -> &mut [T] {
+    /// Changes the elements for the given range on grid[idx].
+    fn index_mut(&mut self, range: Range<usize>) -> &mut Self::Output {
         &mut self.entity[range]
     }
 }
 
 impl<T> IndexMut<(i32, i32)> for Grid<T> {
     /// Changes the element at location on grid[(x, y)].
-    fn index_mut(&mut self, (col, row): (i32, i32)) -> &mut T {
+    fn index_mut(&mut self, (col, row): (i32, i32)) -> &mut Self::Output {
         let idx = (self.width * row as usize) + col as usize;
         &mut self.entity[idx]
     }
@@ -604,7 +604,7 @@ impl<T> IndexMut<(i32, i32)> for Grid<T> {
 
 impl<T> IndexMut<(isize, isize)> for Grid<T> {
     /// Changes the element at location on grid[(x, y)].
-    fn index_mut(&mut self, (col, row): (isize, isize)) -> &mut T {
+    fn index_mut(&mut self, (col, row): (isize, isize)) -> &mut Self::Output {
         let idx = (self.width * row as usize) + col as usize;
         &mut self.entity[idx]
     }
@@ -612,7 +612,7 @@ impl<T> IndexMut<(isize, isize)> for Grid<T> {
 
 impl<T> IndexMut<(usize, usize)> for Grid<T> {
     /// Changes the element at location on grid[(x, y)].
-    fn index_mut(&mut self, (col, row): (usize, usize)) -> &mut T {
+    fn index_mut(&mut self, (col, row): (usize, usize)) -> &mut Self::Output {
         let idx = (self.width * row) + col;
         &mut self.entity[idx]
     }

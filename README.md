@@ -24,6 +24,7 @@ All solutions linked below:
 | [11](https://adventofcode.com/2019/day/11) | * | Space Police                       | 1.19ms | 160µs  | [day11.rs](./src/day11.rs) | :smiley: |
 | [12](https://adventofcode.com/2019/day/12) |   | The N-Body Problem                 | 728µs  | 45.1ms | [day12.rs](./src/day12.rs) | :sweat: |
 | [13](https://adventofcode.com/2019/day/13) | * | Care Package                       | 201µs  | 5.98ms | [day13.rs](./src/day13.rs) | :joy: |
+| [14](https://adventofcode.com/2019/day/14) |   | Space Stoichiometry                | 45.7µs | 275µs  | [day14.rs](./src/day14.rs) | :open_mouth: |
 
 ## Notes
 1. I thought having an array as a parameter cache in the VM would speed things up, but apparently simply returning an array is consistently marginally faster.

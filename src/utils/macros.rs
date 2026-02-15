@@ -29,6 +29,25 @@ macro_rules! hashset {
 }
 
 #[macro_export]
+macro_rules! hashmap {
+    // hashmap!() returns a new empty hashmap
+    () => {
+        ::std::collections::HashMap::new()
+    };
+
+    // hashmap!(key1 => value1, key2 => value2, key3 => value3, ...) returns a HashMap containing all of the specified paird
+    ($($key:expr => $value:expr),*) => {
+        {
+            let mut map = ::std::collections::HashMap::new();
+            $(
+                map.insert($key, $value);
+            )*
+            map
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! vecdeque {
     ($($elem:expr),*) => {{
         let mut dq = ::std::collections::VecDeque::new();
