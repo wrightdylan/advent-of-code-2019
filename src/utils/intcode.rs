@@ -1,19 +1,20 @@
 use std::{collections::VecDeque, ops::RangeInclusive};
 
-pub type Program = Vec<isize>;
 pub type Memory = Vec<isize>;
+pub type Program = Vec<isize>;
+pub type Queue = VecDeque<isize>;
 
 // Intcode Virtual Machine
 #[derive(Debug, Clone)]
 pub struct Machine {
-    ip: usize,           // Instruction Pointer
-    cs: Memory,          // Code Sequence
-    iq: VecDeque<isize>, // Input queue
-    oq: Vec<isize>,      // Output queue
-    pm: [isize; 3],      // Parameter mode
-    os: bool,            // Operating System running?
-    ps: bool,            // Pause operations (e.g. wait for input)
-    rb: isize,           // Relative base
+    ip: usize,      // Instruction Pointer
+    cs: Memory,     // Code Sequence
+    iq: Queue,      // Input queue
+    oq: Queue,      // Output queue
+    pm: [isize; 3], // Parameter mode
+    os: bool,       // Operating System running?
+    ps: bool,       // Pause operations (e.g. wait for input)
+    rb: isize,      // Relative base
 }
 
 impl Machine {
@@ -24,7 +25,7 @@ impl Machine {
             ip: 0,
             cs: prog.clone(),
             iq: VecDeque::new(),
-            oq: Vec::new(),
+            oq: VecDeque::new(),
             pm: [0; 3],
             os: true,
             ps: false,
@@ -54,7 +55,7 @@ impl Machine {
 
     // ////////////////////////////////////////////////////////////////////////
     // Dump the output queue
-    pub fn dump_output(&self) -> &Vec<isize> {
+    pub fn dump_output(&self) -> &Queue {
         &self.oq
     }
 
@@ -124,8 +125,13 @@ impl Machine {
     }
 
     // Load inputs into queue
-    pub fn load(&mut self, inputs: VecDeque<isize>) {
+    pub fn load(&mut self, inputs: Queue) {
         self.iq = inputs;
+    }
+
+    // Tests if the output queue is empty
+    pub fn oq_is_empty(&self) -> bool {
+        self.oq.is_empty()
     }
 
     // Parses the program
@@ -141,9 +147,31 @@ impl Machine {
         self.ps = true;
     }
 
+    // Pops the first entry in the output queue
+    pub fn pop_front(&mut self) -> Option<isize> {
+        self.oq.pop_front()
+    }
+
     // Pops the last entry in the output queue
-    pub fn pop_out(&mut self) -> Option<isize> {
-        self.oq.pop()
+    pub fn pop_back(&mut self) -> Option<isize> {
+        self.oq.pop_back()
+    }
+
+    // Prescans the output queue for min and max values by chunk size
+    // Returns a two-part vector with min values in the first half, and max values in the latter.
+    pub fn prescan_min_max(&self, size: usize) -> Vec<isize> {
+        let mut min_max = Vec::with_capacity(size * 2);
+        min_max.resize(size, isize::MAX);
+        min_max.resize(size * 2, 0);
+
+        for chunk in self.oq.as_slices().0.chunks_exact(size) {
+            for i in 0..size {
+                min_max[i] = min_max[i].min(chunk[i]);
+                min_max[i + size] = min_max[i + size].max(chunk[i]);
+            }
+        }
+
+        min_max
     }
 
     // Read the value at a given location
@@ -153,7 +181,7 @@ impl Machine {
 
     // Outputs only the last entry of the output
     pub fn read_last(&self) -> isize {
-        *self.oq.last().unwrap()
+        *self.oq.back().unwrap()
     }
 
     // Displays the output queue
@@ -232,7 +260,7 @@ impl Machine {
     // Opcode 4 - OUTPUTS a value from address X
     fn out(&mut self) {
         let output = self.get_param(1);
-        self.oq.push(output);
+        self.oq.push_back(output);
         self.inc_ptr(2);
     }
 

@@ -9,9 +9,9 @@ pub enum GridError {
 /// 1D gridness
 #[derive(Debug, Clone)]
 pub struct Grid<T> {
-    pub width: usize,
-    pub height: usize,
-    pub entity: Vec<T>,
+    width: usize,
+    height: usize,
+    entity: Vec<T>,
 }
 
 impl<T: Clone + Copy + PartialEq> Grid<T> {
@@ -26,7 +26,7 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         Self { width, height, entity }
     }
 
-    // New grid from an ASCII block of chars
+    /// New grid from an ASCII block of chars
     pub fn new_from_block(input: &str) -> Grid<char> {
         let width = input.lines().next().unwrap().len();
         let height = input.lines().count();
@@ -35,17 +35,43 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         Grid::new(width, height, entity)
     }
 
-    /// Places an entity at position (x, y)
-    pub fn place_at<'a, I>(&mut self, points: I, value: T)
+    /// Counts the number of occurrances of all items
+    pub fn count_all(&self) -> HashMap<&T, usize>
     where
-        I: IntoIterator<Item = &'a (usize, usize)>
+        T: Eq + std::hash::Hash + Clone
     {
-        for &(x, y) in points {
-            let index = y * self.width + x;
-            if index < self.entity.len() {
-                self.entity[index] = value.clone();
-            }
+        let mut counts: HashMap<&T, usize> = HashMap::new();
+
+        for item in &self.entity {
+            *counts.entry(item).or_insert(0) += 1;
         }
+
+        counts
+    }
+
+    /// Counts the number of occurrances of a given target
+    pub fn count_type(&self, target: &T) -> usize {
+        self.entity.iter().filter(|&x| x == target).count()
+    }
+
+    pub fn find_pos(&self, target: &T) -> Vec<(usize, usize)>
+    where
+        T: PartialEq
+    {
+        self.entity
+            .iter()
+            .enumerate()
+            .filter_map(|(index, item)| if item == target {
+                Some((index % self.width, index / self.width))
+            } else {
+                None
+            })
+            .collect()
+    }
+
+    /// Returns the height of the grid
+    pub fn height(&self) -> usize {
+        self.height
     }
 
     /// Returns a list of points that are within the given Manhattan distance
@@ -90,6 +116,7 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         points
     }
 
+    /// Checks if movement in a certain direction is valid
     pub fn is_valid(&self, pos: &(usize, usize), dir: Ortho) -> bool {
         match dir {
             Ortho::North => if pos.1 == 0 { return false },
@@ -99,6 +126,28 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         }
 
         true
+    }
+
+    /// Returns a list of elements in order from the start position in the direction
+    /// looked at for a given distance.
+    pub fn look(&self, from: &(usize, usize), dir: &(i32, i32), dist: usize) -> Vec<((usize, usize), T)> {
+        let (from_x, from_y) = from;
+        let (dir_x, dir_y) = dir;
+    
+        let mut results = Vec::new();
+    
+        for i in 1..=dist as i32 {
+            let to_x = (*from_x as i32 + dir_x * i) as usize;
+            let to_y = (*from_y as i32 + dir_y * i) as usize;
+
+            if to_x < self.width && to_y < self.height {
+                let to_idx = to_y * self.width + to_x;
+                results.push(((to_x, to_y), self.entity[to_idx].clone()));
+            }
+    
+        }
+    
+        results
     }
 
     /// Creates a list of all valid neighbouring adjacent points in a cardinal
@@ -284,26 +333,22 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         Ok(self.entity[to_idx])
     }
 
-    /// Returns a list of elements in order from the start position in the direction
-    /// looked at for a given distance.
-    pub fn look(&self, from: &(usize, usize), dir: &(i32, i32), dist: usize) -> Vec<((usize, usize), T)> {
-        let (from_x, from_y) = from;
-        let (dir_x, dir_y) = dir;
-    
-        let mut results = Vec::new();
-    
-        for i in 1..=dist as i32 {
-            let to_x = (*from_x as i32 + dir_x * i) as usize;
-            let to_y = (*from_y as i32 + dir_y * i) as usize;
-
-            if to_x < self.width && to_y < self.height {
-                let to_idx = to_y * self.width + to_x;
-                results.push(((to_x, to_y), self.entity[to_idx].clone()));
+    /// Places an entity at position (x, y)
+    pub fn place_at<'a, I>(&mut self, points: I, value: T)
+    where
+        I: IntoIterator<Item = &'a (usize, usize)>
+    {
+        for &(x, y) in points {
+            let index = y * self.width + x;
+            if index < self.entity.len() {
+                self.entity[index] = value.clone();
             }
-    
         }
-    
-        results
+    }
+
+    /// Returns the size of the grid as a tuple (width, height)
+    pub fn size(&self) -> (usize, usize) {
+        (self.width, self.height)
     }
 
     /// Moves an entity from the start position to a direction.
@@ -329,6 +374,11 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         } else {
             return Err(GridError::Collision);
         }
+    }
+
+    /// Returns the width of the grid
+    pub fn width(&self) -> usize {
+        self.width
     }
 }
 
@@ -407,11 +457,48 @@ where
     }
 }
 
+impl<T> Index<i32> for Grid<T> {
+    type Output = T;
+
+    /// Returns the element at location on grid[idx].
+    fn index(&self, idx: i32) -> &Self::Output {
+        &self.entity[idx as usize]
+    }
+}
+
+impl<T> Index<isize> for Grid<T> {
+    type Output = T;
+
+    /// Returns the element at location on grid[idx].
+    fn index(&self, idx: isize) -> &Self::Output {
+        &self.entity[idx as usize]
+    }
+}
+
+impl<T> Index<usize> for Grid<T> {
+    type Output = T;
+
+    /// Returns the element at location on grid[idx].
+    fn index(&self, idx: usize) -> &Self::Output {
+        &self.entity[idx]
+    }
+}
+
 impl<T> Index<(i32, i32)> for Grid<T> {
     type Output = T;
 
     /// Returns the element at location on grid[(x, y)].
     fn index(&self, (col, row): (i32, i32)) -> &Self::Output {
+        let idx = (self.width * row as usize) + col as usize;
+        &self.entity[idx]
+    }
+}
+
+impl<T> Index<(isize, isize)> for Grid<T> {
+    type Output = T;
+
+    /// Returns the element at location on grid[(x, y)].
+    fn index(&self, (col, row): (isize, isize)) -> &Self::Output {
         let idx = (self.width * row as usize) + col as usize;
         &self.entity[idx]
     }
@@ -430,6 +517,14 @@ impl<T> Index<(usize, usize)> for Grid<T> {
 impl<T> IndexMut<(i32, i32)> for Grid<T> {
     /// Changes the element at location on grid[(x, y)].
     fn index_mut(&mut self, (col, row): (i32, i32)) -> &mut T {
+        let idx = (self.width * row as usize) + col as usize;
+        &mut self.entity[idx]
+    }
+}
+
+impl<T> IndexMut<(isize, isize)> for Grid<T> {
+    /// Changes the element at location on grid[(x, y)].
+    fn index_mut(&mut self, (col, row): (isize, isize)) -> &mut T {
         let idx = (self.width * row as usize) + col as usize;
         &mut self.entity[idx]
     }
