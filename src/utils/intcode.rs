@@ -54,6 +54,11 @@ impl Machine {
     }
 
     // ////////////////////////////////////////////////////////////////////////
+    // Clear the output queue (for whatever reason)
+    pub fn clear_output(&mut self) {
+        self.oq.clear();
+    }
+
     // Dump the output queue
     pub fn dump_output(&self) -> &Queue {
         &self.oq
@@ -93,6 +98,11 @@ impl Machine {
     fn get_param(&mut self, offset: usize) -> isize {
         let addr = self.get_addr(offset);
         self.cs[addr]
+    }
+
+    // Prematurely ends program execution
+    pub fn halt(&mut self) {
+        self.hcf();
     }
 
     // Increment the instruction pointer

@@ -25,8 +25,10 @@ All solutions linked below:
 | [12](https://adventofcode.com/2019/day/12) |   | The N-Body Problem                 | 728µs  | 45.1ms | [day12.rs](./src/day12.rs) | :sweat: |
 | [13](https://adventofcode.com/2019/day/13) | * | Care Package                       | 201µs  | 5.98ms | [day13.rs](./src/day13.rs) | :joy: |
 | [14](https://adventofcode.com/2019/day/14) |   | Space Stoichiometry                | 45.7µs | 275µs  | [day14.rs](./src/day14.rs) | :open_mouth: |
+| [15](https://adventofcode.com/2019/day/15) | * | Oxygen System                      | 2.74ms | 2.58ms | [day15.rs](./src/day15.rs) | :cowboy_hat_face: |
 
 ## Notes
 1. I thought having an array as a parameter cache in the VM would speed things up, but apparently simply returning an array is consistently marginally faster.
 2. A simple typo on day 9 caused hours of searching.
 3. Sometimes day 10 part 2 runs faster than part 1, even though it _is_ part 1 with extra steps. I had also expected part 2 to run much slower in general, but perhaps BTreeMap is just that efficient.
+4. Day 15 - AI in intcode!

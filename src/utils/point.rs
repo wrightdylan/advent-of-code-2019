@@ -1,4 +1,6 @@
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+use std::ops::{Add, Sub};
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
@@ -19,6 +21,28 @@ impl Point {
 
     pub fn as_utup(&self) -> (usize, usize) {
         (self.x as usize, self.y as usize)
+    }
+}
+
+impl Add for Point {
+    type Output = Point;
+
+    fn add(self, other: Point) -> Point {
+        Point {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+impl Sub for Point {
+    type Output = Point;
+
+    fn sub(self, other: Point) -> Point {
+        Point {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        }
     }
 }
 

@@ -35,6 +35,29 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         Grid::new(width, height, entity)
     }
 
+    /// Converts a DynaMap to Grid
+    pub fn new_from_dynamap(dynamap: DynaMap<T>, fill: T) -> Self
+    where
+        T: Eq + std::hash::Hash
+    {
+        let (min_x, max_x, min_y, max_y) = dynamap.get_bounds().unwrap();
+        let width = (max_x - min_x) as usize;
+        let height = (max_y - min_y) as usize;
+        let mut grid = Grid::new_fill(width, height, fill);
+        let offset_x = 0 - min_x;
+        let offset_y = 0 - min_y;
+
+        for i in min_y..=max_y {
+            for j in min_x..=max_x {
+                if let Some(&val) = dynamap.get(&(j, i)) {
+                    grid[(j + offset_x, i + offset_y)] = val;
+                }
+            }
+        }
+
+        grid
+    }
+
     /// Counts the number of occurrances of all items
     pub fn count_all(&self) -> HashMap<&T, usize>
     where

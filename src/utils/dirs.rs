@@ -159,3 +159,28 @@ impl Cando {
         }
     }
 }
+
+/// Provides a nice interface for functions to choose whether to use Ortho or Cando
+pub trait DirectionProvider {
+    type Iter: Iterator<Item = (i32, i32)>;
+
+    fn get_directions() -> Self::Iter;
+}
+
+/// Returns all four directions
+impl DirectionProvider for Ortho {
+    type Iter = std::array::IntoIter<(i32, i32), 4>;
+
+    fn get_directions() -> Self::Iter {
+        ORTHO.into_iter()
+    }
+}
+
+/// Returns all eight directions
+impl DirectionProvider for Cando {
+    type Iter = std::array::IntoIter<(i32, i32), 8>;
+
+    fn get_directions() -> Self::Iter {
+        CANDO.into_iter()
+    }
+}
