@@ -26,6 +26,7 @@ All solutions linked below:
 | [13](https://adventofcode.com/2019/day/13) | * | Care Package                       | 201µs  | 5.98ms | [day13.rs](./src/day13.rs) | :joy: |
 | [14](https://adventofcode.com/2019/day/14) |   | Space Stoichiometry                | 45.7µs | 275µs  | [day14.rs](./src/day14.rs) | :open_mouth: |
 | [15](https://adventofcode.com/2019/day/15) | * | Oxygen System                      | 2.74ms | 2.58ms | [day15.rs](./src/day15.rs) | :cowboy_hat_face: |
+<!-- | [16](https://adventofcode.com/2019/day/16) |   | Flawed Frequency Transmission      |  |  | [day16.rs](./src/day16.rs) | :: | -->
 
 ## Notes
 1. I thought having an array as a parameter cache in the VM would speed things up, but apparently simply returning an array is consistently marginally faster.
