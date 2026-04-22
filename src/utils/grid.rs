@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+type GridPos = (usize, usize);
+
 /// Specific grid errors
 pub enum GridError {
     OutOfBounds,
@@ -58,6 +60,57 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         grid
     }
 
+    /// Creates a list of all valid adjacent points in an orthogonal, or cardinal
+    /// and ordinal pattern from a given position, selected by a generic direction
+    /// provider (Ortho/Cando).
+    /// 
+    /// # Example
+    /// ```
+    /// # use aoc_2019::prelude::*;
+    /// let grid = Grid::new_fill(3, 3, '.');
+    /// let cardinals = grid.adjacent::<Ortho>(&(1, 1)).unwrap();
+    /// 
+    /// assert_eq!(cardinals, vec![(1, 2), (2, 1), (1, 0), (0, 1)]);
+    /// ```
+    pub fn adjacent<U: DirectionProvider>(&self, pos: &GridPos) -> Option<Vec<GridPos>> {
+        let valid: Vec<GridPos> = U::get_directions()
+            .filter_map(|(dx, dy)| {
+                let new_x = pos.0.checked_add_signed(dx as isize)?;
+                let new_y = pos.1.checked_add_signed(dy as isize)?;
+                
+                (new_x < self.width && new_y < self.height).then_some((new_x, new_y))
+            })
+            .collect();
+
+        (!valid.is_empty()).then_some(valid)
+    }
+
+    /// Creates a list of all valid neighbours by type in an orthogonal, or
+    /// cardinal and ordinal pattern from a given position, selected by a
+    /// generic direction provider (Ortho/Cando), and returns the directional
+    /// enum.
+    ///
+    /// # Example
+    /// ```
+    /// # use aoc_2019::prelude::*;
+    /// let grid = Grid::new_fill(3, 3, '.');
+    /// let cardinals = grid.adjacent_with_enum::<Ortho>(&(1, 1)).unwrap();
+    /// 
+    /// assert_eq!(cardinals, vec![((1, 2), Ortho::South), ((2, 1), Ortho::East), ((1, 0), Ortho::North), ((0, 1), Ortho::West)]);
+    /// ```
+    pub fn adjacent_with_enum<U: DirectionProvider>(&self, pos: &GridPos) -> Option<Vec<(GridPos, U)>> {
+        let valid: Vec<(GridPos, U)> = U::get_directions()
+            .filter_map(|(dx, dy)| {
+                let new_x = pos.0.checked_add_signed(dx as isize)?;
+                let new_y = pos.1.checked_add_signed(dy as isize)?;
+
+                (new_x < self.width && new_y < self.height).then_some(((new_x, new_y), U::get_enum((dx, dy))))
+            })
+            .collect();
+
+        (!valid.is_empty()).then_some(valid)
+    }
+
     /// Counts the number of occurrances of all items
     pub fn count_all(&self) -> HashMap<&T, usize>
     where
@@ -78,24 +131,43 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
     }
 
     /// Finds all coordinates of a matching target 
-    pub fn find_pos(&self, target: &T) -> Vec<(usize, usize)>
-    where
-        T: PartialEq
-    {
+    pub fn find_pos(&self, target: &T) -> Vec<GridPos> {
         self.entity
             .iter()
             .enumerate()
-            .filter_map(|(index, item)| if item == target {
-                Some((index % self.width, index / self.width))
-            } else {
-                None
-            })
+            .filter_map(|(index, item)|
+                (item == target)
+                    .then_some((index % self.width, index / self.width))
+            )
             .collect()
     }
 
     /// Returns the entity at a specific index
     pub fn get(&self, idx: usize) -> T {
         self.entity[idx]
+    }
+
+    /// Creates a list of all valid neighbours by type in an orthogonal, or
+    /// cardinal and ordinal pattern from a given position, selected by a
+    /// generic direction provider (Ortho/Cando).
+    pub fn get_neighbours_by_type<U>(&self, pos: &GridPos, value: T) -> Option<Vec<GridPos>>
+    where
+        T: PartialEq,
+        U: DirectionProvider,
+    {
+        let valid: Vec<GridPos> = U::get_directions()
+            .filter_map(|(dx, dy)| {
+                let new_x = pos.0.checked_add_signed(dx as isize)?;
+                let new_y = pos.1.checked_add_signed(dy as isize)?;
+
+                (new_x < self.width && new_y < self.height)
+                    .then(|| (self.width * new_y) + new_x)
+                    .and_then(|idx| self.entity.get(idx))
+                    .and_then(|&tile| (tile == value).then_some((new_x, new_y)))
+            })
+            .collect();
+
+        (!valid.is_empty()).then_some(valid)
     }
 
     /// Returns the height of the grid
@@ -105,7 +177,7 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
 
     /// Returns a list of points that are within the given Manhattan distance
     /// of the start point.
-    pub fn in_range(&self, pos: &(usize, usize), dist: usize) -> Vec<((usize, usize), usize)> {
+    pub fn in_range(&self, pos: &GridPos, dist: usize) -> Vec<(GridPos, usize)> {
         let mut points = Vec::new();
 
         for y in max(pos.1 as i32 - dist as i32, 0) as usize..=min(pos.1 + dist, self.height - 1) {
@@ -122,10 +194,7 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
 
     /// Returns a list of points that are within the given Manhattan distance
     /// of the start point that contain the given entity.
-    pub fn in_range_as<U: PartialEq>(&self, pos: &(usize, usize), dist: usize, ent_type: U) -> Vec<((usize, usize), usize)>
-    where
-        T: PartialEq<U>,
-    {
+    pub fn in_range_as(&self, pos: &GridPos, dist: usize, ent_type: T) -> Vec<(GridPos, usize)> {
         let mut points = Vec::new();
 
         for y in max(pos.1 as i32 - dist as i32, 0) as usize..=min(pos.1 + dist, self.height - 1) {
@@ -146,7 +215,7 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
     }
 
     /// Checks if movement in a certain direction is valid
-    pub fn is_valid(&self, pos: &(usize, usize), dir: Ortho) -> bool {
+    pub fn is_valid(&self, pos: &GridPos, dir: Ortho) -> bool {
         match dir {
             Ortho::North => if pos.1 == 0 { return false },
             Ortho::East => if pos.0 == self.width - 1 { return false },
@@ -159,7 +228,7 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
 
     /// Returns a list of elements in order from the start position in the direction
     /// looked at for a given distance.
-    pub fn look(&self, from: &(usize, usize), dir: &(i32, i32), dist: usize) -> Vec<((usize, usize), T)> {
+    pub fn look(&self, from: &GridPos, dir: &(i32, i32), dist: usize) -> Vec<(GridPos, T)> {
         let (from_x, from_y) = from;
         let (dir_x, dir_y) = dir;
     
@@ -179,175 +248,60 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         results
     }
 
-    /// Creates a list of all valid neighbouring adjacent points in a cardinal
-    /// and orthogonal pattern from a given position.
-    pub fn neighbours_cando(&self, pos: &(usize, usize)) -> Vec<(usize, usize)> {
-        let mut neighbours = Vec::new();
+    /// Creates a list of all valid neighbours by type and coorrdinates in an
+    /// orthogonal, or cardinal and ordinal pattern from a given position,
+    /// selected by a generic direction provider (Ortho/Cando).
+    pub fn neighbours<U: DirectionProvider>(&self, pos: &GridPos) -> Option<Vec<(GridPos, T)>> {
+        let valid: Vec<(GridPos, T)> = U::get_directions()
+            .filter_map(|(dx, dy)| {
+                let new_x = pos.0.checked_add_signed(dx as isize)?;
+                let new_y = pos.1.checked_add_signed(dy as isize)?;
 
-        for (dy, dx) in &CANDO {
-            let new_y = (pos.1 as i32 + dy) as usize;
-            let new_x = (pos.0 as i32 + dx) as usize;
-            if new_x < self.width && new_y < self.height {
-                neighbours.push((new_x, new_y));
-            }
-        }
+                (new_x < self.width && new_y < self.height)
+                    .then(|| (self.width * new_y) + new_x)
+                    .and_then(|idx| self.entity.get(idx))
+                    .map(|&tile| ((new_x, new_y), tile))
+            })
+            .collect();
 
-        neighbours
+        (!valid.is_empty()).then_some(valid)
     }
 
-    /// Creates a list of all valid neighbouring adjacent points in a cardinal
-    /// and orthogonal pattern that match a given entity type from a given position.
-    pub fn neighbours_cando_as<U: PartialEq>(&self, pos: &(usize, usize), ent_type: U) -> Vec<(usize, usize)>
-    where
-        T: PartialEq<U>,
+    /// Counts the number of neighbouring adjacent points by type in an orthogonal,
+    /// or cardinal and ordinal pattern from a given position, selected by a
+    /// generic direction provider (Ortho/Cando).
+    ///
+    /// # Example
+    /// ```
+    /// # use aoc_2019::prelude::*;
+    /// let grid = Grid::new_fill(3, 3, '.');
+    /// let cardinals = grid.adjacent_with_enum::<Ortho>(&(1, 1)).unwrap();
+    /// 
+    /// assert_eq!(grid.neighbours_count_by_type::<Ortho>(&(0, 0), '.'), 2);
+    /// assert_eq!(grid.neighbours_count_by_type::<Ortho>(&(1, 0), '.'), 3);
+    /// assert_eq!(grid.neighbours_count_by_type::<Ortho>(&(1, 1), '.'), 4);
+    /// assert_eq!(grid.neighbours_count_by_type::<Ortho>(&(1, 1), '#'), 0);
+    /// ```
+    pub fn neighbours_count_by_type<U>(&self, pos: &GridPos, value: T) -> usize
+    where 
+        T: PartialEq,
+        U: DirectionProvider,
     {
-        let mut neighbours = Vec::new();
+        U::get_directions()
+            .filter_map(|(dx, dy)| {
+                let new_x = pos.0.checked_add_signed(dx as isize)?;
+                let new_y = pos.1.checked_add_signed(dy as isize)?;
 
-        for (dy, dx) in &CANDO {
-            let new_y = (pos.1 as i32 + dy) as usize;
-            let new_x = (pos.0 as i32 + dx) as usize;
-
-            if new_x < self.width && new_y < self.height {
-                let idx = new_y * self.width + new_x;
-                if let Some(entity) = self.entity.get(idx) {
-                    if *entity == ent_type {
-                        neighbours.push((new_x, new_y));
-                    }
-                }
-            }
-        }
-
-        neighbours
-    }
-
-    /// Counts the number of neighbouring adjacent points in a cardinal and
-    /// orthogonal pattern that match a given entity type from a given position.
-    pub fn neighbours_cando_count<U: PartialEq>(&self, pos: &(usize, usize), ent_type: U) -> usize
-    where
-        T: PartialEq<U>,
-    {
-        let mut neighbours = 0;
-
-        for (dy, dx) in &CANDO {
-            let new_y = (pos.1 as i32 + dy) as usize;
-            let new_x = (pos.0 as i32 + dx) as usize;
-
-            if new_x < self.width && new_y < self.height {
-                let idx = new_y * self.width + new_x;
-                if let Some(entity) = self.entity.get(idx) {
-                    if *entity == ent_type {
-                        neighbours += 1;
-                    }
-                }
-            }
-        }
-
-        neighbours
-    }
-
-    /// Creates a list of all valid neighbouring adjacent points in a cardinal
-    /// and orthogonal pattern from a given position and includes the appropriate
-    /// enum.
-    pub fn neighbours_cando_dir(&self, pos: &(usize, usize)) -> Vec<((usize, usize), Cando)> {
-        let mut neighbours = Vec::new();
-
-        for (dy, dx) in &CANDO {
-            let new_y = (pos.1 as i32 + dy) as usize;
-            let new_x = (pos.0 as i32 + dx) as usize;
-            let en = Cando::enumerate(dx, dy);
-            if new_x < self.width && new_y < self.height {
-                neighbours.push(((new_x, new_y), en));
-            }
-        }
-
-        neighbours
-    }
-
-    /// Creates a list of all valid neighbouring adjacent points in an orthogonal
-    /// pattern from a given position.
-    pub fn neighbours_ortho(&self, pos: &(usize, usize)) -> Vec<(usize, usize)> {
-        let mut neighbours = Vec::new();
-
-        for (dy, dx) in &ORTHO {
-            let new_y = (pos.1 as i32 + dy) as usize;
-            let new_x = (pos.0 as i32 + dx) as usize;
-            if new_x < self.width && new_y < self.height {
-                neighbours.push((new_x, new_y));
-            }
-        }
-
-        neighbours
-    }
-
-    /// Creates a list of all valid neighbouring adjacent points in an orthogonal
-    /// pattern that match a given entity type from a given position.
-    pub fn neighbours_ortho_as<U: PartialEq>(&self, pos: &(usize, usize), ent_type: U) -> Vec<(usize, usize)>
-    where
-        T: PartialEq<U>,
-    {
-        let mut neighbours = Vec::new();
-
-        for (dy, dx) in &ORTHO {
-            let new_y = (pos.1 as i32 + dy) as usize;
-            let new_x = (pos.0 as i32 + dx) as usize;
-
-            if new_x < self.width && new_y < self.height {
-                let idx = new_y * self.width + new_x;
-                if let Some(entity) = self.entity.get(idx) {
-                    if *entity == ent_type {
-                        neighbours.push((new_x, new_y));
-                    }
-                }
-            }
-        }
-
-        neighbours
-    }
-
-    /// Counts the number of neighbouring adjacent points in an orthogonal
-    /// pattern that match a given entity type from a given position.
-    pub fn neighbours_ortho_count<U: PartialEq>(&self, pos: &(usize, usize), ent_type: U) -> usize
-    where
-        T: PartialEq<U>,
-    {
-        let mut neighbours = 0;
-
-        for (dy, dx) in &ORTHO {
-            let new_y = (pos.1 as i32 + dy) as usize;
-            let new_x = (pos.0 as i32 + dx) as usize;
-
-            if new_x < self.width && new_y < self.height {
-                let idx = new_y * self.width + new_x;
-                if let Some(entity) = self.entity.get(idx) {
-                    if *entity == ent_type {
-                        neighbours += 1;
-                    }
-                }
-            }
-        }
-
-        neighbours
-    }
-
-    /// Creates a list of all valid neighbouring adjacent points in an orthogonal
-    /// pattern from a given position and includes the orthogonal enum.
-    pub fn neighbours_ortho_dir(&self, pos: &(usize, usize)) -> Vec<((usize, usize), Ortho)> {
-        let mut neighbours = Vec::new();
-
-        for (dy, dx) in &ORTHO {
-            let new_y = (pos.1 as i32 + dy) as usize;
-            let new_x = (pos.0 as i32 + dx) as usize;
-            let en = Ortho::enumerate(dx, dy);
-            if new_x < self.width && new_y < self.height {
-                neighbours.push(((new_x, new_y), en));
-            }
-        }
-
-        neighbours
+                (new_x < self.width && new_y < self.height)
+                    .then(|| (self.width * new_y) + new_x)
+                    .and_then(|idx| self.entity.get(idx))
+                    .and_then(|&tile| (tile == value).then_some(1))
+            })
+            .sum()
     }
 
     /// Returns the element in the adjacent square in the given direction.
-    pub fn peek(&self, from: &(usize, usize), dir: &(i32, i32)) -> Result<T, GridError> {
+    pub fn peek(&self, from: &GridPos, dir: &(i32, i32)) -> Result<T, GridError> {
         let (from_x, from_y) = from;
         let (dir_x, dir_y) = dir;
 
@@ -362,10 +316,10 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         Ok(self.entity[to_idx])
     }
 
-    /// Places an entity at position (x, y)
+    /// Places an entity at positions [(x, y)]
     pub fn place_at<'a, I>(&mut self, points: I, value: T)
     where
-        I: IntoIterator<Item = &'a (usize, usize)>
+        I: IntoIterator<Item = &'a GridPos>
     {
         for &(x, y) in points {
             let index = y * self.width + x;
@@ -381,14 +335,14 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
     }
 
     /// Returns the size of the grid as a tuple (width, height)
-    pub fn size(&self) -> (usize, usize) {
+    pub fn size(&self) -> GridPos {
         (self.width, self.height)
     }
 
     /// Moves an entity from the start position to a direction.
     /// The 'ignore' option allows movement even if the position being moved to
     /// contains the element to be ignored.
-    pub fn slide(&mut self, from: (usize, usize), dir: (i32, i32), ignore: Option<T>) -> Result<(), GridError> {    
+    pub fn slide(&mut self, from: GridPos, dir: (i32, i32), ignore: Option<T>) -> Result<(), GridError> {
         let to_x = from.0 as i32 + dir.0;
         let to_y = from.1 as i32 + dir.1;
 
@@ -441,7 +395,7 @@ where T: std::fmt::Debug {
     /// Draws a nice map, converting elements according to a given character
     /// map. Useful when elements contain enums. Also includes special node
     /// character map.
-    pub fn draw_enum_node_map(&self, char_map: &HashMap<T, char>, nodes: &HashMap<(usize, usize), char>)
+    pub fn draw_enum_node_map(&self, char_map: &HashMap<T, char>, nodes: &HashMap<GridPos, char>)
     where
         T: Copy + Eq + Hash,
     {

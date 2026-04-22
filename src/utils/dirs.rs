@@ -9,6 +9,7 @@ pub enum Ortho {
     West,
 }
 
+// Note that for enumerations, the coordinates are actually inverted for north and south
 impl Ortho {
     pub const UP: Self = Ortho::North;
     pub const RIGHT: Self = Ortho::East;
@@ -165,6 +166,7 @@ pub trait DirectionProvider {
     type Iter: Iterator<Item = (i32, i32)>;
 
     fn get_directions() -> Self::Iter;
+    fn get_enum(offset: (i32, i32)) -> Self;
 }
 
 /// Returns all four directions
@@ -174,6 +176,10 @@ impl DirectionProvider for Ortho {
     fn get_directions() -> Self::Iter {
         ORTHO.into_iter()
     }
+
+    fn get_enum((dx, dy): (i32, i32)) -> Self {
+        Ortho::enumerate(&dx, &dy)
+    }
 }
 
 /// Returns all eight directions
@@ -182,5 +188,9 @@ impl DirectionProvider for Cando {
 
     fn get_directions() -> Self::Iter {
         CANDO.into_iter()
+    }
+
+    fn get_enum((dx, dy): (i32, i32)) -> Self {
+        Cando::enumerate(&dx, &dy)
     }
 }

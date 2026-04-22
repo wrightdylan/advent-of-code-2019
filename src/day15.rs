@@ -157,7 +157,7 @@ pub fn solve_part2(input: &Program) -> usize {
         vacant -= layer.len();
 
         for pos in layer {
-            if let Some(new_neighbors) = dynamap.get_neighbour_by_type::<Ortho>(pos, '.') {
+            if let Some(new_neighbors) = dynamap.get_neighbours_by_type::<Ortho>(pos, '.') {
                 for n in new_neighbors {
                     dynamap.insert(n, 'O');
                     frontier.insert(n);

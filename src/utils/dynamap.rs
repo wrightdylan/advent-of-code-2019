@@ -1,6 +1,5 @@
-use std::{ops::Add, vec};
-
 use crate::prelude::*;
+use std::{ops::Add, vec};
 
 type Pos = (i32, i32);
 
@@ -84,6 +83,7 @@ impl<T: Clone + Copy + PartialEq + Eq + Hash> DynaMap<T> {
         self.map.get(pos)
     }
 
+    /// Gets the X, Y extents of all mapped areas
     pub fn get_bounds(&self) -> Option<(i32, i32, i32, i32)> {
         let mut keys = self.map.keys();
         
@@ -103,8 +103,13 @@ impl<T: Clone + Copy + PartialEq + Eq + Hash> DynaMap<T> {
         Some((min_x, max_x, min_y, max_y))
     }
 
-    pub fn get_neighbour_by_type<U: DirectionProvider>(&self, pos: Pos, value: T) -> Option<Vec<Pos>> 
-    where T: PartialEq
+    /// Creates a list of all valid neighbours by type in an orthogonal, or
+    /// cardinal and ordinal pattern from a given position, selected by a
+    /// generic direction provider (Ortho/Cando).
+    pub fn get_neighbours_by_type<U>(&self, pos: Pos, value: T) -> Option<Vec<Pos>> 
+    where
+        T: PartialEq,
+        U: DirectionProvider,
     {
         let matching: Vec<Pos> = U::get_directions()
             .filter_map(|dir| {
@@ -120,18 +125,17 @@ impl<T: Clone + Copy + PartialEq + Eq + Hash> DynaMap<T> {
         }
     }
 
+    /// Returns a list of unexplored coordinated from a given position based on
+    /// a generic direction provider (Ortho/Cando).
     pub fn get_unexplored<U: DirectionProvider>(&self, pos: Pos) -> Option<Vec<Pos>> {
         let unexplored: Vec<Pos> = U::get_directions()
             .filter(|dir| !self.map.contains_key(&(dir.0 + pos.0, dir.1 + pos.1)))
             .collect();
 
-        if unexplored.is_empty() {
-            None
-        } else {
-            Some(unexplored)
-        }
+        (!unexplored.is_empty()).then_some(unexplored)
     }
 
+    /// Checks if the 'incomplete' queue is empty, and thus all tiles are explored.
     pub fn has_unexplored(&self) -> bool {
         !self.incomplete.is_empty()
     }
@@ -165,7 +169,7 @@ impl<T: Clone + Copy + PartialEq + Eq + Hash> DynaMap<T> {
         self.incomplete.iter().cloned().collect()
     }
 
-    // Nearest unexplored by Manhattan distance
+    /// Nearest unexplored by Manhattan distance
     pub fn nearest_unexp_mh(&self, pos: &Pos) -> Pos {
         let mut best_pos= (0, 0);
         let mut shortest = i32::MAX;
@@ -186,13 +190,13 @@ impl<T: Clone + Copy + PartialEq + Eq + Hash> DynaMap<T> {
         self.incomplete.insert(key);
     }
 
-    // Path to nearest unexplored by Dijkstra
-    pub fn path_unexp_dijk(&self, pos: &Pos, valid: T) -> Vec<Pos> {
+    /// Path to nearest unexplored by Dijkstra (seems janky)
+    pub fn path_unexp_dijk<U: DirectionProvider>(&self, pos: &Pos, valid: T) -> Vec<Pos> {
         let mut best_path = Vec::new();
         let mut shortest = usize::MAX;
 
         for candidate in self.incomplete.clone() {
-            let path = self.dijkstra::<Ortho>(*pos, candidate, valid).unwrap();
+            let path = self.dijkstra::<U>(*pos, candidate, valid).unwrap();
             let length = path.len();
             if shortest > length {
                 shortest = length;
@@ -203,7 +207,7 @@ impl<T: Clone + Copy + PartialEq + Eq + Hash> DynaMap<T> {
         best_path
     }
 
-    // Path to nearest unexplored by Manhattan distance
+    /// Path to nearest unexplored by Manhattan distance
     pub fn path_unexp_mh(&self, pos: &Pos, valid: T) -> Vec<Pos> {
         let goal = self.nearest_unexp_mh(pos);
 
@@ -214,14 +218,14 @@ impl<T: Clone + Copy + PartialEq + Eq + Hash> DynaMap<T> {
         self.incomplete.remove(key);
     }
 
-    pub fn show_neighbours<U: DirectionProvider>(&self, pos: Pos)
+    pub fn show_neighbours<U>(&self, pos: Pos)
     where 
         T: std::fmt::Debug,
+        U: DirectionProvider,
     {
         U::get_directions()
             .filter_map(|dir| {
                 let new_pos = (pos.0 + dir.0, pos.1 + dir.1);
-                // Pair the position with the result of the get() call
                 self.map.get(&new_pos).map(|val| (new_pos, val))
             })
             .for_each(|(pos, value)| {
