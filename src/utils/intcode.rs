@@ -82,7 +82,8 @@ impl Machine {
     fn get_addr(&mut self, offset: usize) -> usize {
         let addr = match self.pm[offset - 1] {
             0 => self.cs[self.ip + offset] as usize,
-            1 => self.ip + offset,
+            // 1 => self.ip + offset,
+            1 => panic!("Mode 1 used for an address at IP {}", self.ip),
             2 => (self.rb + self.cs[self.ip + offset]) as usize,
             _ => unreachable!(),
         };
@@ -91,13 +92,51 @@ impl Machine {
             self.cs.resize(addr + 1, 0);
         };
 
+        if addr > 5000 { println!("HIGH ACCESS: {} at IP {}", addr, self.ip); } // test, remove later
+
+        addr
+    }
+
+    // Gets the destination address, correcting for mode 1 write
+    fn get_dest_addr(&mut self, offset: usize) -> usize {
+        let val = self.cs[self.ip + offset];
+        let addr = match self.pm[offset - 1] {
+            0 => val as usize,
+            1 => panic!("Illegal Mode 1 write at IP {}", self.ip),
+            // 2 => (self.rb + val).max(0) as usize,
+            2 => {
+                let offset_val = self.cs[self.ip + offset];
+                let addr = self.rb + offset_val;
+                if addr < 0 { panic!("Negative address at IP {}", self.ip); }
+                addr as usize
+            }
+            _ => unreachable!(),
+        };
+
+        if addr >= self.cs.len() {
+            self.cs.resize(addr + 1, 0);
+        }
+
+        if addr > 5000 { println!("HIGH ACCESS: {} at IP {}", addr, self.ip); } // test, remove later
+
         addr
     }
     
     // Fetches a parameter for an operation according to parameter mode
+    // fn get_param(&mut self, offset: usize) -> isize {
+    //     let addr = self.get_addr(offset);
+    //     self.cs[addr]
+    // }
     fn get_param(&mut self, offset: usize) -> isize {
-        let addr = self.get_addr(offset);
-        self.cs[addr]
+        let mode = self.pm[offset - 1];
+        let val = self.cs[self.ip + offset];
+
+        match mode {
+            0 => self.read(val as usize),
+            1 => val,
+            2 => self.read((self.rb + val) as usize),
+            _ => unreachable!(),
+        }
     }
 
     // Prematurely ends program execution
@@ -127,6 +166,11 @@ impl Machine {
     // Drains the output queue from one machine and uses it as the input for another
     pub fn input_from(&mut self, other: &mut Machine) {
         self.iq.extend(other.oq.drain(..));
+    }
+
+    // Pushes a single value onto the end of the input queue
+    pub fn input_push(&mut self, input: isize) {
+        self.iq.push_back(input);
     }
 
     // Checks if the machine is still running
@@ -186,7 +230,8 @@ impl Machine {
 
     // Read the value at a given location
     pub fn read(&self, index: usize) -> isize {
-        self.cs[index]
+        // self.cs[index]
+        self.cs.get(index).copied().unwrap_or(0)
     }
 
     // Outputs only the last entry of the output
@@ -199,10 +244,28 @@ impl Machine {
         println!("{:?}", self.oq);
     }
 
-    // Resets the machine and loads a program 
+    // Displays the output queue as chars
+    pub fn read_out_as_chars(&self) {
+        for &val in &self.oq {
+            if val < 128 { print!("{}", val as u8 as char); }
+        }
+    }
+
+    // Reboots the machine and loads a program 
     pub fn reboot(&mut self, prog: &Program) {
         self.ip = 0;
         self.cs = prog.clone();
+        self.iq.clear();
+        self.oq.clear();
+        self.pm = [0; 3];
+        self.os = true;
+        self.ps = false;
+        self.rb = 0;
+    }
+
+    // Simply resets the machine without reload
+    pub fn reset(&mut self) {
+        self.ip = 0;
         self.iq.clear();
         self.oq.clear();
         self.pm = [0; 3];
@@ -225,6 +288,7 @@ impl Machine {
     // Display the status of the machine (for debugging)
     pub fn status(&self) {
         println!("Pointer location: {}", self.ip);
+        println!("Memory size: {}", self.cs.len());
         println!("Input queue: {:?}", self.iq);
         println!("Output queue: {:?}", self.oq);
         println!("Parameter modes: {:?}", self.pm);
@@ -243,16 +307,34 @@ impl Machine {
     // Parameters that an instruction writes to will never be in immediate mode.
 
     // Opcode 1 - ADD values from indices A and B, place into index C
-    fn add(&mut self,) {
-        let addr = self.get_addr(3);
-        self.cs[addr] = self.get_param(1) + self.get_param(2);
+    // fn add(&mut self,) {
+    //     let addr = self.get_addr(3);
+    //     self.cs[addr] = self.get_param(1) + self.get_param(2);
+    //     self.inc_ptr(4);
+    // }
+    fn add(&mut self) {
+        let a = self.get_param(1);
+        let b = self.get_param(2);
+        
+        let dest = self.get_dest_addr(3);
+        
+        self.cs[dest] = a + b;
         self.inc_ptr(4);
     }
 
     // Opcode 2 - MULTIPLY values from indices A and B, place into index C
+    // fn mul(&mut self) {
+    //     let addr = self.get_addr(3);
+    //     self.cs[addr] = self.get_param(1) * self.get_param(2);
+    //     self.inc_ptr(4);
+    // }
     fn mul(&mut self) {
-        let addr = self.get_addr(3);
-        self.cs[addr] = self.get_param(1) * self.get_param(2);
+        let a = self.get_param(1);
+        let b = self.get_param(2);
+        
+        let dest = self.get_dest_addr(3);
+        
+        self.cs[dest] = a * b;
         self.inc_ptr(4);
     }
 
@@ -316,7 +398,9 @@ impl Machine {
 
     // Opcode 9 - Adjusts the relative base by an offset
     fn rbx(&mut self) {
-        self.rb += self.get_param(1);
+        // self.rb += self.get_param(1);
+        let val = self.get_param(1);
+        self.rb = (self.rb as i64 + val as i64) as isize; 
         self.inc_ptr(2);
     }
 

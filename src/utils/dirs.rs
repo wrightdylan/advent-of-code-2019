@@ -16,13 +16,13 @@ impl Ortho {
     pub const DOWN: Self = Ortho::South;
     pub const LEFT: Self = Ortho::West;
 
-    pub fn enumerate(dx: &i32, dy: &i32) -> Self {
+    pub fn enumerate(dx: i32, dy: i32) -> Self {
         match (dx, dy) {
             (0, -1) => Ortho::North,
             (1, 0)  => Ortho::East,
             (0, 1)  => Ortho::South,
             (-1, 0) => Ortho::West,
-            _ => unreachable!(),
+            _ => panic!("Invalid direction: ({}, {})", dx, dy),
         }
     }
 
@@ -85,7 +85,17 @@ pub enum Cando {
 }
 
 impl Cando {
-    pub fn enumerate(dx: &i32, dy: &i32) -> Self {
+    pub const UP: Self = Cando::North;
+    pub const RIGHT: Self = Cando::East;
+    pub const DOWN: Self = Cando::South;
+    pub const LEFT: Self = Cando::West;
+
+    pub const UP_RIGHT: Self = Cando::Northeast;
+    pub const UP_LEFT: Self = Cando::Northwest;
+    pub const DOWN_RIGHT: Self = Cando::Southeast;
+    pub const DOWN_LEFT: Self = Cando::Southwest;
+
+    pub fn enumerate(dx: i32, dy: i32) -> Self {
         match (dx, dy) {
             (0, -1)  => Cando::North,
             (1, 0)   => Cando::East,
@@ -95,7 +105,7 @@ impl Cando {
             (1, -1)  => Cando::Northeast,
             (-1, 1)  => Cando::Southwest,
             (1, 1)   => Cando::Southeast,
-            _ => unreachable!(),
+            _ => panic!("Invalid direction: ({}, {})", dx, dy),
         }
     }
 
@@ -178,7 +188,7 @@ impl DirectionProvider for Ortho {
     }
 
     fn get_enum((dx, dy): (i32, i32)) -> Self {
-        Ortho::enumerate(&dx, &dy)
+        Ortho::enumerate(dx, dy)
     }
 }
 
@@ -191,6 +201,6 @@ impl DirectionProvider for Cando {
     }
 
     fn get_enum((dx, dy): (i32, i32)) -> Self {
-        Cando::enumerate(&dx, &dy)
+        Cando::enumerate(dx, dy)
     }
 }

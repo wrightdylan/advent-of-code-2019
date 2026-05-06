@@ -27,6 +27,7 @@ All solutions linked below:
 | [14](https://adventofcode.com/2019/day/14) |   | Space Stoichiometry                | 45.7µs | 275µs  | [day14.rs](./src/day14.rs) | :open_mouth: |
 | [15](https://adventofcode.com/2019/day/15) | * | Oxygen System                      | 2.74ms | 2.58ms | [day15.rs](./src/day15.rs) | :cowboy_hat_face: |
 | [16](https://adventofcode.com/2019/day/16) |   | Flawed Frequency Transmission      | 329µs  | 111ms  | [day16.rs](./src/day16.rs) | :exploding_head: |
+| [17](https://adventofcode.com/2019/day/17) | * | Set and Forget                     | 377µs  |  | [day17.rs](./src/day16.rs) |  |
 
 ## Notes
 1. I thought having an array as a parameter cache in the VM would speed things up, but apparently simply returning an array is consistently marginally faster.
@@ -34,3 +35,4 @@ All solutions linked below:
 3. Sometimes day 10 part 2 runs faster than part 1, even though it _is_ part 1 with extra steps. I had also expected part 2 to run much slower in general, but perhaps BTreeMap is just that efficient.
 4. Day 15 - AI in intcode!
 5. Day 16 was a particularly tricky one
+6. Day 17 has a rather annoying untraceable bug somewhere in the VM that causes the map to be slanted when address 0 is changed from '1' to '2'.

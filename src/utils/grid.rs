@@ -125,9 +125,37 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         counts
     }
 
+    /// Counts the number of adjacent tiles matching the given type.
+    pub fn count_neighbours_by_type<U>(&self, pos: &GridPos, value: T) -> usize
+    where
+        T: PartialEq,
+        U: DirectionProvider,
+    {
+        U::get_directions()
+            .filter_map(|(dx, dy)| {
+                let new_x = pos.0.checked_add_signed(dx as isize)?;
+                let new_y = pos.1.checked_add_signed(dy as isize)?;
+
+                let idx = (new_x < self.width && new_y < self.height)
+                    .then(|| (self.width * new_y) + new_x)?;
+                
+                let &tile = self.entity.get(idx)?;
+                (tile == value).then_some(())
+            })
+            .count()
+    }
+
     /// Counts the number of occurrances of a given target
     pub fn count_type(&self, target: &T) -> usize {
         self.entity.iter().filter(|&x| x == target).count()
+    }
+
+    /// Finds the position of only the first instance of a matching target
+    pub fn find_first(&self, target: &T) -> Option<GridPos> {
+        self.entity
+            .iter()
+            .position(|item| item == target)
+            .map(|index| (index % self.width, index / self.width))
     }
 
     /// Finds all coordinates of a matching target 
