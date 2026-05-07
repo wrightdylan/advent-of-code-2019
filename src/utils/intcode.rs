@@ -59,6 +59,11 @@ impl Machine {
         self.oq.clear();
     }
 
+    // Drains the output queue up to a given point
+    pub fn drain_output(&mut self, n: usize) -> std::collections::vec_deque::Drain<'_, isize> {
+        self.oq.drain(..n)
+    }
+
     // Dump the output queue
     pub fn dump_output(&self) -> &Queue {
         &self.oq
@@ -167,6 +172,11 @@ impl Machine {
     // Pushes a single value onto the end of the input queue
     pub fn input_push(&mut self, input: isize) {
         self.iq.push_back(input);
+    }
+
+    // Returns a slice of the current output
+    pub fn inspect_output(&mut self) -> &[isize] {
+        self.oq.make_contiguous()
     }
 
     // Checks if the machine is still running

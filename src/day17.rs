@@ -49,27 +49,27 @@ impl Robot {
     }
 }
 
+// Slight performance boost to grid function.
 fn to_grid(vm: &mut Machine) -> Grid<char> {
-    let mut num_rows = 0;
-    let mut entity = Vec::new();
-    let mut last_was_newline = false;
+    let slice = vm.inspect_output();
 
-    while let Some(code) = vm.pop_front() {
-        if code == 10 {
-            if last_was_newline {
-                // We hit a double newline! The map is over.
-                break;
-            }
-            num_rows += 1;
-            last_was_newline = true;
-        } else {
-            entity.push(code as u8 as char);
-            last_was_newline = false;
-        }
-    }
+    let end_pos = slice.windows(2)
+        .position(|w| w[0] == 10 && w[1] == 10)
+        .map(|pos| pos + 1)
+        .unwrap_or(slice.len());
 
-    // num_rows logic depends on whether the map ends in a trailing newline
-    Grid::new(entity.len() / num_rows, num_rows, entity)
+    let raw_data: Vec<isize> = vm.drain_output(end_pos).collect();
+
+    let width = raw_data.iter().position(|&c| c == 10).unwrap_or(raw_data.len());
+    
+    let entity: Vec<char> = raw_data.into_iter()
+        .filter(|&c| c != 10)
+        .map(|c| c as u8 as char)
+        .collect();
+
+    let num_rows = entity.len() / width;
+
+    Grid::new(width, num_rows, entity)
 }
 
 fn alignment_parameter(grid: &Grid<char>) -> usize {
