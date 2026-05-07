@@ -82,8 +82,8 @@ impl Machine {
     fn get_addr(&mut self, offset: usize) -> usize {
         let addr = match self.pm[offset - 1] {
             0 => self.cs[self.ip + offset] as usize,
-            // 1 => self.ip + offset,
-            1 => panic!("Mode 1 used for an address at IP {}", self.ip),
+            1 => self.ip + offset,
+            // 1 => panic!("Mode 1 used for an address at IP {}", self.ip),
             2 => (self.rb + self.cs[self.ip + offset]) as usize,
             _ => unreachable!(),
         };
@@ -92,52 +92,48 @@ impl Machine {
             self.cs.resize(addr + 1, 0);
         };
 
-        if addr > 5000 { println!("HIGH ACCESS: {} at IP {}", addr, self.ip); } // test, remove later
-
         addr
     }
 
     // Gets the destination address, correcting for mode 1 write
-    fn get_dest_addr(&mut self, offset: usize) -> usize {
-        let val = self.cs[self.ip + offset];
-        let addr = match self.pm[offset - 1] {
-            0 => val as usize,
-            1 => panic!("Illegal Mode 1 write at IP {}", self.ip),
-            // 2 => (self.rb + val).max(0) as usize,
-            2 => {
-                let offset_val = self.cs[self.ip + offset];
-                let addr = self.rb + offset_val;
-                if addr < 0 { panic!("Negative address at IP {}", self.ip); }
-                addr as usize
-            }
-            _ => unreachable!(),
-        };
+    // fn get_dest_addr(&mut self, offset: usize) -> usize {
+    //     let val = self.cs[self.ip + offset];
+    //     let addr = match self.pm[offset - 1] {
+    //         0 => val as usize,
+    //         1 => panic!("Illegal Mode 1 write at IP {}", self.ip),
+    //         // 2 => (self.rb + val).max(0) as usize,
+    //         2 => {
+    //             let offset_val = self.cs[self.ip + offset];
+    //             let addr = self.rb + offset_val;
+    //             if addr < 0 { panic!("Negative address at IP {}", self.ip); }
+    //             addr as usize
+    //         }
+    //         _ => unreachable!(),
+    //     };
 
-        if addr >= self.cs.len() {
-            self.cs.resize(addr + 1, 0);
-        }
+    //     if addr >= self.cs.len() {
+    //         self.cs.resize(addr + 1, 0);
+    //     }
 
-        if addr > 5000 { println!("HIGH ACCESS: {} at IP {}", addr, self.ip); } // test, remove later
-
-        addr
-    }
+    //     addr
+    // }
     
     // Fetches a parameter for an operation according to parameter mode
-    // fn get_param(&mut self, offset: usize) -> isize {
-    //     let addr = self.get_addr(offset);
-    //     self.cs[addr]
-    // }
     fn get_param(&mut self, offset: usize) -> isize {
-        let mode = self.pm[offset - 1];
-        let val = self.cs[self.ip + offset];
-
-        match mode {
-            0 => self.read(val as usize),
-            1 => val,
-            2 => self.read((self.rb + val) as usize),
-            _ => unreachable!(),
-        }
+        let addr = self.get_addr(offset);
+        self.cs[addr]
     }
+    // fn get_param(&mut self, offset: usize) -> isize {
+    //     let mode = self.pm[offset - 1];
+    //     let val = self.cs[self.ip + offset];
+
+    //     match mode {
+    //         0 => self.read(val as usize),
+    //         1 => val,
+    //         2 => self.read((self.rb + val) as usize),
+    //         _ => unreachable!(),
+    //     }
+    // }
 
     // Prematurely ends program execution
     pub fn halt(&mut self) {
@@ -307,36 +303,36 @@ impl Machine {
     // Parameters that an instruction writes to will never be in immediate mode.
 
     // Opcode 1 - ADD values from indices A and B, place into index C
-    // fn add(&mut self,) {
-    //     let addr = self.get_addr(3);
-    //     self.cs[addr] = self.get_param(1) + self.get_param(2);
-    //     self.inc_ptr(4);
-    // }
-    fn add(&mut self) {
-        let a = self.get_param(1);
-        let b = self.get_param(2);
-        
-        let dest = self.get_dest_addr(3);
-        
-        self.cs[dest] = a + b;
+    fn add(&mut self,) {
+        let addr = self.get_addr(3);
+        self.cs[addr] = self.get_param(1) + self.get_param(2);
         self.inc_ptr(4);
     }
+    // fn add(&mut self) {
+    //     let a = self.get_param(1);
+    //     let b = self.get_param(2);
+        
+    //     let dest = self.get_dest_addr(3);
+        
+    //     self.cs[dest] = a + b;
+    //     self.inc_ptr(4);
+    // }
 
     // Opcode 2 - MULTIPLY values from indices A and B, place into index C
-    // fn mul(&mut self) {
-    //     let addr = self.get_addr(3);
-    //     self.cs[addr] = self.get_param(1) * self.get_param(2);
-    //     self.inc_ptr(4);
-    // }
     fn mul(&mut self) {
-        let a = self.get_param(1);
-        let b = self.get_param(2);
-        
-        let dest = self.get_dest_addr(3);
-        
-        self.cs[dest] = a * b;
+        let addr = self.get_addr(3);
+        self.cs[addr] = self.get_param(1) * self.get_param(2);
         self.inc_ptr(4);
     }
+    // fn mul(&mut self) {
+    //     let a = self.get_param(1);
+    //     let b = self.get_param(2);
+        
+    //     let dest = self.get_dest_addr(3);
+        
+    //     self.cs[dest] = a * b;
+    //     self.inc_ptr(4);
+    // }
 
     // Opcode 3 - Takes an INPUT value, and stores it at address X
     fn inp(&mut self) {

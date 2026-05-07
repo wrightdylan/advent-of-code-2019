@@ -52,17 +52,23 @@ impl Robot {
 fn to_grid(vm: &mut Machine) -> Grid<char> {
     let mut num_rows = 0;
     let mut entity = Vec::new();
+    let mut last_was_newline = false;
 
     while let Some(code) = vm.pop_front() {
         if code == 10 {
+            if last_was_newline {
+                // We hit a double newline! The map is over.
+                break;
+            }
             num_rows += 1;
+            last_was_newline = true;
         } else {
-            entity.push(u8::try_from(code).unwrap() as char);
+            entity.push(code as u8 as char);
+            last_was_newline = false;
         }
     }
 
-    num_rows -= 1;
-
+    // num_rows logic depends on whether the map ends in a trailing newline
     Grid::new(entity.len() / num_rows, num_rows, entity)
 }
 
@@ -176,8 +182,8 @@ pub fn solve_part2(input: &Program) -> usize {
     vm.inject(0, 2);
     vm.run();
     let grid = to_grid(&mut vm);
-    grid.draw_map();
-    vm.status();
+    // grid.draw_map();
+    // vm.read_out_as_chars();
 
     let mut robot = Robot::new(grid.find_first(&'^').unwrap(), Ortho::North);
     let mut path = Vec::new();    
@@ -204,17 +210,20 @@ pub fn solve_part2(input: &Program) -> usize {
         .collect();
 
     vm.input_ext(&prepare_input(main_strings));
+    vm.resume();
     for pattern in patterns {
         vm.input_ext(&prepare_input(pattern));
+        vm.resume();
     }
     vm.input_push('n' as isize);
     vm.input_push(10);
+    // vm.read_out_as_chars();
+    vm.clear_output();
     vm.resume();
-    vm.status();
-    vm.read_out_as_chars();
-    grid.draw_map();
+    // vm.status();
+    vm.halt();
 
-    0
+    vm.read_last() as usize
 }
 
 #[cfg(test)]
