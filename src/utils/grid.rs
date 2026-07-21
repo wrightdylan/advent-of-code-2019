@@ -399,7 +399,9 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
 }
 
 impl<T> Grid<T>
-where T: std::fmt::Debug {
+where
+    T: std::fmt::Debug
+{
     /// Draws a nice map, converting elements according to a given character
     /// map. Useful when elements contain enums.
     pub fn draw_enum_map(&self, char_map: &HashMap<T, char>)
