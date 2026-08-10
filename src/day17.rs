@@ -19,7 +19,7 @@ impl Robot {
     }
 
     fn find_next_move(&self, grid: &Grid<char>) -> Option<(Move, Ortho)> {
-        let check = |dir: Ortho| grid.peek(&self.pos, &dir.to_dir()).is_ok_and(|t| t == '#');
+        let check = |dir: Ortho| grid.peek(self.pos, dir).is_ok_and(|t| t == '#');
 
         if check(self.dir) {
             return Some((Move::Forward, self.dir));
