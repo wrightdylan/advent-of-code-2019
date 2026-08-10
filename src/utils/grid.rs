@@ -256,23 +256,22 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
 
     /// Returns a list of elements in order from the start position in the direction
     /// looked at for a given distance.
-    pub fn look(&self, from: &GridPos, dir: &(i32, i32), dist: usize) -> Vec<(GridPos, T)> {
-        let (from_x, from_y) = from;
-        let (dir_x, dir_y) = dir;
-    
+    pub fn look<U: DirectionProvider>(&self, from: GridPos, dir: U, dist: usize) -> Vec<(GridPos, T)> {
         let mut results = Vec::new();
-    
-        for i in 1..=dist as i32 {
-            let to_x = (*from_x as i32 + dir_x * i) as usize;
-            let to_y = (*from_y as i32 + dir_y * i) as usize;
+        let mut current_pos = from;
 
-            if to_x < self.width && to_y < self.height {
-                let to_idx = to_y * self.width + to_x;
-                results.push(((to_x, to_y), self.entity[to_idx].clone()));
+        for _ in 0..dist {
+            match self.resolve_target(current_pos, dir) {
+                Ok((next_pos, to_idx)) => {
+                    results.push((next_pos, self.entity[to_idx].clone()));
+                    current_pos = next_pos;
+                }
+                Err(_) => {
+                    break;
+                }
             }
-    
         }
-    
+
         results
     }
 
@@ -329,19 +328,10 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
     }
 
     /// Returns the element in the adjacent square in the given direction.
-    pub fn peek(&self, from: &GridPos, dir: &(i32, i32)) -> Result<T, GridError> {
-        let (from_x, from_y) = from;
-        let (dir_x, dir_y) = dir;
-
-        let to_x = *from_x as i32 + dir_x;
-        let to_y = *from_y as i32 + dir_y;
-
-        if to_x < 0 || to_x >= self.width as i32 || to_y < 0 || to_y >= self.height as i32 {
-            return Err(GridError::OutOfBounds);
-        }
-
-        let to_idx = (to_y as usize * self.width + to_x as usize) as usize;
-        Ok(self.entity[to_idx])
+    pub fn peek<D: DirectionProvider>(&self, from: GridPos, dir: D) -> Result<T, GridError> {
+        let (_, to_idx) = self.resolve_target(from, dir)?;
+        
+        Ok(self.entity[to_idx].clone())
     }
 
     /// Places an entity at positions [(x, y)]
@@ -362,6 +352,23 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         self.entity[idx] = value;
     }
 
+    /// Moves a position in a direction and ensures it sits within the physical 2D grid constraints.
+    /// Returns the target coordinate and its flat 1D index, or an OutOfBounds error.
+    fn resolve_target<U: DirectionProvider>(&self, from: GridPos, dir: U) -> Result<(GridPos, usize), GridError> {
+        let target_pos = match from.move_dir(dir) {
+            Ok(pos) => pos,
+            Err(_) => return Err(GridError::OutOfBounds),
+        };
+
+        if target_pos.0 >= self.width || target_pos.1 >= self.height {
+            return Err(GridError::OutOfBounds);
+        }
+
+        let target_idx = target_pos.1 * self.width + target_pos.0;
+
+        Ok((target_pos, target_idx))
+    }
+
     /// Returns the size of the grid as a tuple (width, height)
     pub fn size(&self) -> GridPos {
         (self.width, self.height)
@@ -370,25 +377,18 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
     /// Moves an entity from the start position to a direction.
     /// The 'ignore' option allows movement even if the position being moved to
     /// contains the element to be ignored.
-    pub fn slide(&mut self, from: GridPos, dir: (i32, i32), ignore: Option<T>) -> Result<(), GridError> {
-        let to_x = from.0 as i32 + dir.0;
-        let to_y = from.1 as i32 + dir.1;
+    pub fn slide<U: DirectionProvider>(&mut self, from: GridPos, dir: U, ignore: Option<T>) -> Result<(), GridError> {
+        let (_, to_idx) = self.resolve_target(from, dir)?;
+        let from_idx = from.1 * self.width + from.0;
 
-        if to_x < 0 || to_x >= self.width as i32 || to_y < 0 || to_y >= self.height as i32 {
-            return Err(GridError::OutOfBounds);
-        }
+        let from_tile = &self.entity[from_idx];
+        let to_tile = &self.entity[to_idx];
 
-        let from_idx = (from.1 * self.width + from.0) as usize;
-        let to_idx = (to_y as usize * self.width + to_x as usize) as usize;
-
-        let from_tile = self.entity[from_idx];
-        let to_tile = self.entity[to_idx];
-
-        if from_tile == ignore.unwrap_or(to_tile) || to_tile == ignore.unwrap_or(from_tile) {
+        if from_tile == ignore.as_ref().unwrap_or(to_tile) || to_tile == ignore.as_ref().unwrap_or(from_tile) {
             self.entity.swap(from_idx, to_idx);
-            return Ok(());
+            Ok(())
         } else {
-            return Err(GridError::Collision);
+            Err(GridError::Collision)
         }
     }
 

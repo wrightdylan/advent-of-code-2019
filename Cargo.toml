@@ -3,7 +3,7 @@ name = "aoc_2019"
 version = "0.1.0"
 author = ["Dylan Wright"]
 edition = "2024"
-rust-version = "1.93.0"
+rust-version = "1.97.0"
 
 [registeries.crates-io]
 protocol = "sparse"
@@ -15,6 +15,7 @@ binarray = { git = "https://github.com/wrightdylan/binarray.git", tag = "0.2.1"}
 bitvecs = { git = "https://github.com/wrightdylan/bitvecs.git", tag = "0.1.1" }
 itertools = "0.15.0"
 num-integer = "0.1.46"
+num-traits = "0.2.19"
 rayon = "1.12.0"
 
 [build]

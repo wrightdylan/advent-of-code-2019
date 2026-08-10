@@ -30,6 +30,7 @@ All solutions linked below:
 | [17](https://adventofcode.com/2019/day/17) | * | Set and Forget                     | 377µs  | 793µs  | [day17.rs](./src/day17.rs) | :sob: |
 | [18](https://adventofcode.com/2019/day/18) |   | Many-Worlds Interpretation         | 53.7ms | 570ms  | [day18.rs](./src/day18.rs) | :fearful: |
 | [19](https://adventofcode.com/2019/day/19) | * | Tractor Beam                       | 764µs  | 8.55ms | [day19.rs](./src/day19.rs) | :blush: |
+| [20](https://adventofcode.com/2019/day/20) |   | Donut Maze                         | 1.22ms | 8.74ms | [day20.rs](./src/day20.rs) | :sob: |
 
 ## Notes
 1. I thought having an array as a parameter cache in the VM would speed things up, but apparently simply returning an array is consistently marginally faster.

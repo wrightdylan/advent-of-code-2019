@@ -41,6 +41,7 @@ dependencies = [
  "bitvecs",
  "itertools",
  "num-integer",
+ "num-traits",
  "rayon",
 ]
 
