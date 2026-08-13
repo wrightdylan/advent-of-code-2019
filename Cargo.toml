@@ -1,12 +1,9 @@
 [package]
 name = "aoc_2019"
 version = "0.1.0"
-author = ["Dylan Wright"]
+authors = ["Dylan Wright"]
 edition = "2024"
 rust-version = "1.97.0"
-
-[registeries.crates-io]
-protocol = "sparse"
 
 [dependencies]
 aoc-runner = "0.3.0"
@@ -14,15 +11,12 @@ aoc-runner-derive = "0.3.0"
 binarray = { git = "https://github.com/wrightdylan/binarray.git", tag = "0.2.1"}
 bitvecs = { git = "https://github.com/wrightdylan/bitvecs.git", tag = "0.1.1" }
 itertools = "0.15.0"
-num-integer = "0.1.46"
+num-integer = "0.1.47"
 num-traits = "0.2.19"
 rayon = "1.12.0"
 
-[build]
-target = ["x86_64-unknown-linux-gnu"]
-
 [profile.dev]
-opt-levvel = 1
+opt-level = 1
 
 [profile.test]
 opt-level = 1
