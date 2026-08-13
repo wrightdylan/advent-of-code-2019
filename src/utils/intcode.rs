@@ -144,6 +144,16 @@ impl Machine {
         self.oq.make_contiguous()
     }
 
+    // Tests if the input queue is empty
+    pub fn iq_is_empty(&self) -> bool {
+        self.iq.is_empty()
+    }
+
+    // Checks if the machine is paused
+    pub fn is_paused(&self) -> bool {
+        self.ps
+    }
+
     // Checks if the machine is still running
     pub fn is_running(&self) -> bool {
         self.os
@@ -157,6 +167,11 @@ impl Machine {
     // Tests if the output queue is empty
     pub fn oq_is_empty(&self) -> bool {
         self.oq.is_empty()
+    }
+
+    // Returns the length of the output queue
+    pub fn oq_len(&self) -> usize {
+        self.oq.len()
     }
 
     // Parses the program
