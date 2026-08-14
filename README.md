@@ -34,6 +34,7 @@ All solutions linked below:
 | [21](https://adventofcode.com/2019/day/21) | * | Springdroid Adventure              | 252µs  | 5.79ms | [day21.rs](./src/day21.rs) | :satisfied: |
 | [22](https://adventofcode.com/2019/day/22) |   | Slam Shuffle                       | 2.23µs | 2.92µs | [day22.rs](./src/day22.rs) | :sweat_smile: |
 | [23](https://adventofcode.com/2019/day/23) | * | Category Six                       | 470µs  | 1.79ms | [day23.rs](./src/day23.rs) | :relaxed: |
+| [24](https://adventofcode.com/2019/day/24) |   | Planet of Discord                  | 14.3ms | 8.05ms | [day24.rs](./src/day24.rs) | :scream: |
 
 ## Notes
 1. I thought having an array as a parameter cache in the VM would speed things up, but apparently simply returning an array is consistently marginally faster.

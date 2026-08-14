@@ -2,10 +2,51 @@ use crate::prelude::*;
 
 type GridPos = (usize, usize);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SmallestBitmask {
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    U128(u128),
+}
+
+impl SmallestBitmask {
+    /// Attempts to extract the inner integer into a specific primitive type.
+    /// 
+    /// # Errors
+    /// Returns [`GridError::Overflow`] if the underlying integer value
+    /// is too large to fit into the requested primitive type `T`.
+    pub fn try_extract<T>(&self) -> Result<T, GridError>
+    where
+        u128: TryInto<T>,
+    {
+        let raw_val: u128 = (*self).into();
+        
+        raw_val.try_into()
+            .map_err(|_| GridError::Overflow)
+    }
+}
+
+impl From<SmallestBitmask> for u128 {
+    fn from(mask: SmallestBitmask) -> Self {
+        match mask {
+            SmallestBitmask::U8(v) => v as u128,
+            SmallestBitmask::U16(v) => v as u128,
+            SmallestBitmask::U32(v) => v as u128,
+            SmallestBitmask::U64(v) => v as u128,
+            SmallestBitmask::U128(v) => v,
+        }
+    }
+}
+
 /// Specific grid errors
+#[derive(Debug)]
 pub enum GridError {
-    OutOfBounds,
     Collision,
+    OutOfBounds,
+    Overflow,
+    TooLargeForBitmask(usize),
 }
 
 /// 1D gridness
@@ -150,6 +191,11 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         self.entity.iter().filter(|&x| x == target).count()
     }
 
+    /// Returns a borrowed slice of the entire flat entity field.
+    pub fn entity(&self) -> &[T] {
+        &self.entity
+    }
+
     /// Finds the position of only the first instance of a matching target
     pub fn find_first(&self, target: &T) -> Option<GridPos> {
         self.entity
@@ -252,6 +298,46 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         }
 
         true
+    }
+
+    /// Iterates through every element from index 0 to the end, yielding a tuple
+    /// containing a reference to the current item and its adjacent neighbor count.
+    ///
+    /// The yield format is: `(&T, usize)`
+    pub fn iter_with_neighbour_counts<'a, U>(&'a self, value: T) -> impl Iterator<Item = (&'a T, usize)> + 'a
+    where
+        T: PartialEq + Copy + 'a,
+        U: DirectionProvider,
+    {
+        let width = self.width as isize;
+        let height = self.height as isize;
+
+        self.entity.iter().enumerate().map(move |(idx, item)| {
+            let x = (idx % self.width) as isize;
+            let y = (idx / self.width) as isize;
+
+            let count = U::get_directions()
+                .filter_map(|(dx, dy)| {
+                    let nx = x + dx as isize;
+                    let ny = y + dy as isize;
+
+                    if nx >= 0 && nx < width && ny >= 0 && ny < height {
+                        let target_idx = (ny * width + nx) as usize;
+                        self.entity.get(target_idx)
+                    } else {
+                        None
+                    }
+                })
+                .filter(|&&tile| tile == value)
+                .count();
+
+            (item, count)
+        })
+    }
+
+    /// Returns the length of the entity field
+    pub fn len(&self) -> usize {
+        self.entity.len()
     }
 
     /// Returns a list of elements in order from the start position in the direction
@@ -390,6 +476,80 @@ impl<T: Clone + Copy + PartialEq> Grid<T> {
         } else {
             Err(GridError::Collision)
         }
+    }
+
+    /// Compresses the flat 1D grid entities into the smallest possible unsigned primitive integer wrapping enum.
+    ///
+    /// This is highly useful for grid optimisation, memory caching, snapshot serialisation, 
+    /// or duplicate detection in search loops (e.g., historical state sets).
+    ///
+    /// # Sizing Rules
+    /// * `0` to `8` elements    -> [`SmallestBitmask::U8`]
+    /// * `9` to `16` elements   -> [`SmallestBitmask::U16`]
+    /// * `17` to `32` elements  -> [`SmallestBitmask::U32`]
+    /// * `33` to `64` elements  -> [`SmallestBitmask::U64`]
+    /// * `65` to `128` elements -> [`SmallestBitmask::U128`]
+    ///
+    /// # Errors
+    /// Returns [`GridError::TooLargeForBitmask`] if the underlying entity vector contains 
+    /// more than 128 items, as it exceeds native primitive integer allocation sizes.
+    ///
+    /// # Example
+    /// ```
+    /// # use aoc_2019::prelude::*;
+    /// // Setup a 5x5 Conway grid layout
+    /// let grid = Grid::new(
+    ///     5,
+    ///     5,
+    ///     vec![
+    ///         '.', '.', '.', '.', '#',
+    ///         '.', '.', '.', '.', '.',
+    ///         '.', '.', '.', '.', '.',
+    ///         '.', '.', '.', '.', '.',
+    ///         '.', '.', '.', '.', '.',
+    ///     ],
+    /// );
+    ///
+    /// // Compress state where '#' is the active '1' bit
+    /// let bitmask = grid.try_to_bitmask(|&tile| tile == '#').unwrap();
+    /// 
+    /// // A 5x5 grid (25 tiles) automatically optimises down to a u32!
+    /// assert!(matches!(bitmask, SmallestBitmask::U32(_)));
+    /// 
+    /// // Grab the raw numeric value easily using Into<u128>
+    /// let raw_value: u128 = bitmask.into();
+    /// assert_eq!(raw_value, 16); // 1 << 4 (the 5th tile)
+    /// ```
+    pub fn try_to_bitmask<F>(&self, is_active: F) -> Result<SmallestBitmask, GridError>
+    where
+        F: Fn(&T) -> bool,
+    {
+        let len = self.entity.len();
+
+        if len > 128 {
+            return Err(GridError::TooLargeForBitmask(len));
+        }
+
+        let mask = self.entity
+            .iter()
+            .enumerate()
+            .fold(0u128, |acc, (idx, element)| {
+                if is_active(element) {
+                    acc | (1u128 << idx)
+                } else {
+                    acc
+                }
+            });
+
+        let result = match len {
+            0..=8   => SmallestBitmask::U8(mask as u8),
+            9..=16  => SmallestBitmask::U16(mask as u16),
+            17..=32 => SmallestBitmask::U32(mask as u32),
+            33..=64 => SmallestBitmask::U64(mask as u64),
+            _       => SmallestBitmask::U128(mask),
+        };
+
+        Ok(result)
     }
 
     /// Returns the width of the grid
