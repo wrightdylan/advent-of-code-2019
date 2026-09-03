@@ -83,6 +83,10 @@ impl<T: Clone + Copy + PartialEq + Eq + Hash> DynaMap<T> {
         self.map.get(pos)
     }
 
+    pub fn get_mut(&mut self, pos: &Pos) -> Option<&mut T> {
+        self.map.get_mut(pos)
+    }
+
     /// Gets the X, Y extents of all mapped areas
     pub fn get_bounds(&self) -> Option<(i32, i32, i32, i32)> {
         let mut keys = self.map.keys();
@@ -144,8 +148,24 @@ impl<T: Clone + Copy + PartialEq + Eq + Hash> DynaMap<T> {
         self.map.insert(key, value);
     }
 
+    pub fn is_discovered(&self, pos: Pos) -> bool {
+        self.map.contains_key(&pos) || self.incomplete.contains(&pos)
+    }
+
     pub fn is_explored(&self, pos: Pos) -> bool {
         self.map.contains_key(&pos)
+    }
+
+    pub fn is_unexplored(&self, pos: Pos) -> bool {
+        self.incomplete.contains(&pos)
+    }
+
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, Pos, T> {
+        self.map.iter()
+    }
+
+    pub fn iter_incomplete(&self) -> std::collections::hash_set::Iter<'_, Pos> {
+        self.incomplete.iter()
     }
 
     pub fn list_coords_by_tile(&self, target: T) -> Vec<Pos> {
@@ -185,6 +205,10 @@ impl<T: Clone + Copy + PartialEq + Eq + Hash> DynaMap<T> {
         best_pos
     }
 
+    pub fn new_unexplored(&mut self, key: Pos) -> bool {
+        self.incomplete.insert(key)
+    }
+
     pub fn new_pos(&mut self, key: Pos, value: T) {
         self.map.entry(key).or_insert(value);
         self.incomplete.insert(key);
@@ -212,6 +236,11 @@ impl<T: Clone + Copy + PartialEq + Eq + Hash> DynaMap<T> {
         let goal = self.nearest_unexp_mh(pos);
 
         self.dijkstra::<Ortho>(*pos, goal, valid).unwrap()
+    }
+
+    pub fn resolve_incomplete(&mut self, pos: Pos, value: T) {
+        self.map.insert(pos, value);
+        self.incomplete.remove(&pos);
     }
 
     pub fn set_explored(&mut self, key: &Pos) {

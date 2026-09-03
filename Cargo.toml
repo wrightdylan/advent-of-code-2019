@@ -3,7 +3,7 @@ name = "aoc_2019"
 version = "0.1.0"
 authors = ["Dylan Wright"]
 edition = "2024"
-rust-version = "1.97.0"
+rust-version = "1.98.0"
 
 [dependencies]
 aoc-runner = "0.3.0"

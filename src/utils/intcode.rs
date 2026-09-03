@@ -1,8 +1,20 @@
-use std::{collections::VecDeque, ops::RangeInclusive};
+use crate::prelude::*;
+use std::ops::RangeInclusive;
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
 pub type Memory = Vec<isize>;
 pub type Program = Vec<isize>;
 pub type Queue = VecDeque<isize>;
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum SafeRunResult {
+    Paused,         // Paused normally for input, returning total instructions executed
+    Halted,         // Encountered a hard halt (Opcode 99 / HCF)
+    SoftLocked,     // State signature repeated across input pauses
+    InfiniteLoop,   // Instruction execution exceeded user threshold
+}
 
 // Intcode Virtual Machine
 #[derive(Debug, Clone)]
@@ -53,6 +65,72 @@ impl Machine {
         }
     }
 
+    // Safely executes the machine with custom loop bounds and automatic soft-lock detection.
+    // 
+    // # Arguments
+    // * `instruction_limit` - Max instructions to execute before declaring an infinite loop.
+    // * `seen_states` - A mutable set to track historical signatures across multiple commands.
+    pub fn run_safe_mode(
+        &mut self, 
+        instruction_limit: usize, 
+        max_repeats: usize,
+    ) -> SafeRunResult {
+        if !self.os { return SafeRunResult::Halted; }
+
+        let mut executed_count = 0;
+        
+        // Track the last state signature seen at an input instruction
+        let mut last_input_state = (0usize, 0isize, 0usize); // (ip, rb, oq_len)
+        let mut consecutive_repeat_count = 0;
+
+        while self.os && !self.ps {
+            let opcode = self.fetch_inst();
+            
+            match opcode {
+                1  => self.add(),
+                2  => self.mul(),
+                3  => {
+                    // Create a lightweight, allocation-free signature of the pause state
+                    let current_state = (self.ip, self.rb, self.oq.len());
+
+                    if current_state == last_input_state {
+                        consecutive_repeat_count += 1;
+                        if consecutive_repeat_count >= max_repeats {
+                            return SafeRunResult::SoftLocked;
+                        }
+                    } else {
+                        // The state changed! Reset the consecutive counter
+                        last_input_state = current_state;
+                        consecutive_repeat_count = 0;
+                    }
+
+                    self.inp();
+                },
+                4  => self.out(),
+                5  => self.jnz(),
+                6  => self.jz(),
+                7  => self.lt(),
+                8  => self.eq(),
+                9  => self.rbx(),
+                99 => self.hcf(),
+                _  => panic!("Invalid opcode"),
+            }
+
+            executed_count += 1;
+            
+            // Infinite loop protection. This threshold only counts instructions fired *after* typing the last command.
+            if executed_count > instruction_limit {
+                return SafeRunResult::InfiniteLoop;
+            }
+        }
+
+        if !self.os {
+            SafeRunResult::Halted
+        } else {
+            SafeRunResult::Paused
+        }
+    }
+
     // ////////////////////////////////////////////////////////////////////////
     // Clear the output queue (for whatever reason)
     pub fn clear_output(&mut self) {
@@ -62,6 +140,16 @@ impl Machine {
     // Drains the output queue up to a given point
     pub fn drain_output(&mut self, n: usize) -> std::collections::vec_deque::Drain<'_, isize> {
         self.oq.drain(..n)
+    }
+
+    // Drains the entire output queue, translates the ASCII codes, 
+    // and returns them as an owned String, leaving the queue completely empty.
+    pub fn drain_to_string(&mut self) -> String {
+        self.oq
+            .drain(..)
+            .filter(|&val| val >= 0 && val < 128)
+            .map(|val| val as u8 as char)
+            .collect()
     }
 
     // Dump the output queue
@@ -225,9 +313,20 @@ impl Machine {
         }
     }
 
+    // Feeds the entire raw text instruction directly into the queue with a single trailing newline.
+    pub fn push_manual_input(&mut self, text: &str) {
+        let trimmed = text.trim();
+        if trimmed.is_empty() { return; }
+
+        for byte in trimmed.bytes() {
+            self.iq.push_back(byte as isize);
+        }
+        
+        self.iq.push_back(10); 
+    }
+
     // Read the value at a given location
     pub fn read(&self, index: usize) -> isize {
-        // self.cs[index]
         self.cs.get(index).copied().unwrap_or(0)
     }
 
@@ -292,6 +391,14 @@ impl Machine {
         println!("Operating system: {}", match self.os { true => "running", false => "stopped" } );
         println!("System paused: {}", self.ps);
         println!("Relative base: {}", self.rb);
+    }
+
+    // Prompt for manual text insertion
+    pub fn take_manual_input(&mut self) {
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+
+        self.push_manual_input(&input); 
     }
 
     // *** All the opcode shit ***
